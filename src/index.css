@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Noto Serif KR", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+:root {
+  --bg-base: #F9F7F2;
+  --primary-sage: #5D6D5F;
+  --secondary-clay: #B07D62;
+  --accent-gold: #D4A373;
+  --text-main: #2C3333;
+  --card-white: #FFFFFF;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-main);
+}
+
+.serif {
+  font-family: var(--font-serif);
+}
+
+.ai-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(93, 109, 95, 0.2);
+}
+
+.loader {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid var(--primary-sage);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.flow-node {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.flow-line {
+  width: 2px;
+  background: #CBD5E1;
+  margin: 0 auto;
+  height: 2rem;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-down {
+  animation: fade-in-down 0.3s ease-out;
+}
+
