@@ -1,26 +1,4 @@
-export interface ProverbData {
-  id: string;
-  reference: string;
-  title: string;
-  verse: string;
-  source: string;
-  theme: string;
-  commentary: string;
-  application: string;
-  chartType: 'radar' | 'bar' | 'none';
-  accentColor: string;
-  tag: string;
-  merged?: string | { title?: string; body?: string }; // ✅ 통합 데이터 구조 추가
-  simulation?: 'mountaineer';
-  translations?: any;
-  partner?: string; // ✅ 대화 상대/친구
-  categoryCode?: string; // ✅ 콘텐츠 분류 코드 (예: C01_연애/집착_D03)
-  audio?: Record<string, string>; // ✅ 언어별 오디오 URL (KO, EN, JP, CN, ES, DE, HI) - Preview URL
-  audio_direct?: Record<string, string>; // ✅ 다운로드용 Direct URL
-  audioFileIds?: Record<string, string>; // ✅ 로컬 캐시 키용 File ID
-}
-
-export const proverbs: Record<string, ProverbData> = {
+{
   "8:28": {
     "id": "rom8_28",
     "reference": "Romans 8:28",
@@ -410,7 +388,4 @@ export const proverbs: Record<string, ProverbData> = {
       "body": "어린 왕 솔로몬의 판결은 이스라엘 백성들에게 큰 안도감을 주었습니다. 그들은 이제 자신들의 억울함을 풀어줄 명철한 왕이 있음을 확인했습니다. 아이를 품에 안고 눈물을 흘리며 돌아가는 여인의 뒷모습은 지혜가 거둔 가장 위대한 승리였습니다. 왕은 칼을 휘두르지 않고도 칼보다 날카롭게 거짓을 베어냈습니다. 그는 부귀와 장수보다 지혜를 구했던 자신의 선택이 옳았음을 증명했습니다. 지혜는 결국 한 생명을 살리는 것으로 그 가치를 완성했습니다.\n\n권력의 정점은 명령하는 자리가 아니라, 가장 낮은 곳의 진실을 발견하고 세워주는 자리입니다.\n\n지혜는 배우는 것이 아니라, 되어가는 것이다. - 미상\n\n잠언의 말씀은 우리를 솔로몬과 같은 통찰의 자리로 초대합니다. 말씀을 내 안에 '간직'할 때, 우리도 누군가의 생명을 살리는 주인공이 됩니다.\n\n지혜를 얻기 위해 겸손히 기도하십시오. 타인의 입장에서 생각하는 역지사지의 자세를 성경적으로 훈련하십시오.\n\n그러므로 우리는 말씀을 우리 영혼의 가장 깊은 곳에 간직하여 지혜의 원천으로 삼아야 합니다.\n\n지혜로운 자는 하나님께 받은 마음으로 세상을 아름답게 가꾸어 나가는 사람입니다.\n\n당신의 마음 저장고에는 세상의 소문이 가득합니까, 아니면 하나님의 생명력이 가득합니까?"
     }
   }
-};
-
-export const defaultVerseKey = '1:1-2';
-export const defaultVerse = proverbs[defaultVerseKey];
+}
