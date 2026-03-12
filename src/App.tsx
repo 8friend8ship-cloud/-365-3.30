@@ -30,6 +30,7 @@ import { EngineLangKey, EnginePiece, EngineLangBlock, EngineResponseData, DailyP
 // ✅ Apps Script WebApp URL (v53.0)
 const WEBAPP_URL =
   'https://script.google.com/macros/s/AKfycbzMNeTPcLIktMPqzkJnVH4tJG_fZNt6821LQDwJtaBAkr5sYCjpFX_LFS_bBsDJwHne/exec';
+const DELIVERY_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
 const SPREADSHEET_ID = '1qHteZrNUa3ln2lix3p1Bufsh1o6WN98Ogoy9acuTlBg';
 const ACCESS_TOKEN = import.meta.env.VITE_ACCESS_TOKEN || 'bible2026secret';
 const EDITOR_ID = '109430604282542310163';
@@ -980,6 +981,7 @@ export default function App() {
           enginePack={enginePack}
           onRefreshEngine={() => callBibleEngine('today', true)}
           isLoadingEngine={isEngineLoading}
+          deliveryEngineUrl={DELIVERY_ENGINE_URL}
         />
       </main>
 

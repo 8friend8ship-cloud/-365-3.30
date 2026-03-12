@@ -8,7 +8,7 @@ import 'dotenv/config';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // GAS WebApp URL and Token
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwx7sU5mEpCcEbGqx6122eclRauaOwZS28ig5LyjUcEZnfjD-I/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
 const ACCESS_TOKEN = process.env.VITE_ACCESS_TOKEN || 'bible2026secret';
 
 async function startServer() {

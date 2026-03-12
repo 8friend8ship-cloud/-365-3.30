@@ -1,3 +1,4 @@
+import { AudioPlayer } from './AudioPlayer';
 import React, { useState, useEffect } from 'react';
 import type { ProverbData } from '../data/proverbs';
 import { historicalEvents } from '../data/historicalEvents';
@@ -20,11 +21,53 @@ interface AdminDashboardProps {
   enginePack?: DailyPack | null;
   onRefreshEngine?: () => void;
   isLoadingEngine?: boolean;
+  deliveryEngineUrl: string;
 }
 
-export default function AdminDashboard({ isOpen, onClose, proverbs = {}, setProverbs, lang = 'KO', enginePack, onRefreshEngine, isLoadingEngine = false }: AdminDashboardProps) {
+export default function AdminDashboard({ isOpen, onClose, proverbs = {}, setProverbs, lang = 'KO', enginePack, onRefreshEngine, isLoadingEngine = false, deliveryEngineUrl }: AdminDashboardProps) {
   const t = (key: string) => getUIText(lang, key);
   
+  const [isFetchingAudio, setIsFetchingAudio] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const handleFetchAndCombineAudio = async () => {
+    setIsFetchingAudio(true);
+    setFetchError(null);
+    try {
+      const url = new URL(deliveryEngineUrl);
+      url.searchParams.set("type", "today");
+      url.searchParams.set("token", "bible2026secret");
+      
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && (data.items || data.payload?.items)) {
+        const items = data.items || data.payload?.items;
+        console.log("Items to process:", items);
+        setItems(items);
+        showAlert(`${items.length}개의 오디오 데이터를 가져왔습니다.`);
+      } else {
+        const errorMessage = data.message || JSON.stringify(data);
+        setFetchError(`API Error: ${errorMessage}`);
+        showAlert("오디오 데이터를 가져오지 못했습니다.");
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setFetchError(`Fetch Error: ${errorMessage}`);
+      showAlert("오디오 가져오기 중 오류가 발생했습니다.");
+    } finally {
+      setIsFetchingAudio(false);
+    }
+  };
+
   const [dialogConfig, setDialogConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -581,6 +624,55 @@ export default function AdminDashboard({ isOpen, onClose, proverbs = {}, setProv
           </div>
         )}
         <div className="flex-grow overflow-y-auto pr-2 md:pr-4 space-y-6 md:space-y-8">
+          <div className="p-4 md:p-6 bg-white rounded-xl border border-gray-200">
+            <h3 className="text-lg font-bold text-[#5D6D5F] mb-4">Delivery Engine Status</h3>
+            <div className="flex flex-col gap-2">
+                <div className="text-sm text-gray-600">
+                    <span className="font-bold">Status:</span> {isFetchingAudio ? 'Checking...' : items.length > 0 ? 'Connected' : 'Disconnected'}
+                </div>
+                {fetchError && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-700 text-xs rounded border border-red-200 break-all">
+                        <span className="font-bold">Error Output:</span> {fetchError}
+                    </div>
+                )}
+                <button 
+                    onClick={handleFetchAndCombineAudio}
+                    disabled={isFetchingAudio}
+                    className="mt-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition-all w-fit flex items-center gap-2 disabled:opacity-50"
+                >
+                    {isFetchingAudio ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Checking...
+                        </>
+                    ) : (
+                        <>
+                            <Music className="w-4 h-4" />
+                            Check & Fetch Audio
+                        </>
+                    )}
+                </button>
+            </div>
+            {items.length > 0 && (
+                <div className="mt-4 space-y-4">
+                    {items.map((item) => (
+                        <div key={item.id} className="p-4 border rounded-xl bg-gray-50">
+                            <h3 className="font-bold mb-3">{item.id}</h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {Object.entries(item.audio).map(([lang, url]) => (
+                                    <AudioPlayer 
+                                        key={lang}
+                                        lang={lang}
+                                        url={url as string} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </div>
+          
           <div className="p-4 md:p-6 bg-white rounded-xl border border-gray-200">
             <h3 className="text-lg font-bold text-[#5D6D5F] mb-4">Engine Data Status</h3>
             <div className="flex flex-col gap-2">

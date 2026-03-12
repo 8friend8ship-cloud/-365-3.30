@@ -49,30 +49,124 @@ export default function DayContent({ data, lang = 'KO' }: DayContentProps) {
 
   const displayTitle = useMemo(() => {
     if (!data) return '';
-    const tr = data.translations?.[lang] ?? data.translations?.KO ?? {};
-    // ✅ merged 우선 사용
-    const m = tr.merged;
-    if (typeof m === 'string') return tr.devotion?.title || tr.dry?.title || data.title || '';
-    if (m?.title) return m.title;
     
-    // Legacy fallback
-    const devTitle = tr?.devotion?.title ?? '';
-    const dryTitle = tr?.dry?.title ?? '';
-    return devTitle || dryTitle || data.title || '';
+    // 1. Try selected language translation
+    const tr = data.translations?.[lang];
+    if (tr) {
+      if (tr.merged && typeof tr.merged !== 'string' && tr.merged.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang}, usedField=translations.${lang}.merged.title`);
+        return tr.merged.title;
+      }
+      if (tr.devotion?.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang}, usedField=translations.${lang}.devotion.title`);
+        return tr.devotion.title;
+      }
+      if (tr.dry?.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang}, usedField=translations.${lang}.dry.title`);
+        return tr.dry.title;
+      }
+    }
+
+    // 2. Fallback to KO translation
+    const koTr = data.translations?.KO;
+    if (koTr) {
+      if (koTr.merged && typeof koTr.merged !== 'string' && koTr.merged.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang} (fallback to KO), usedField=translations.KO.merged.title`);
+        return koTr.merged.title;
+      }
+      if (koTr.devotion?.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang} (fallback to KO), usedField=translations.KO.devotion.title`);
+        return koTr.devotion.title;
+      }
+      if (koTr.dry?.title) {
+        console.log(`[DayContent:displayTitle] lang=${lang} (fallback to KO), usedField=translations.KO.dry.title`);
+        return koTr.dry.title;
+      }
+    }
+
+    // 3. Fallback to root fields
+    const rootM = data.merged;
+    if (rootM && typeof rootM !== 'string' && rootM.title) {
+      console.log(`[DayContent:displayTitle] lang=${lang} (fallback to root), usedField=root.merged.title`);
+      return rootM.title;
+    }
+    if (data.title) {
+      console.log(`[DayContent:displayTitle] lang=${lang} (fallback to root), usedField=root.title`);
+      return data.title;
+    }
+
+    console.log(`[DayContent:displayTitle] lang=${lang}, usedField=none (empty)`);
+    return '';
   }, [data, lang]);
 
   const displayBody = useMemo(() => {
     if (!data) return '';
-    const tr = data.translations?.[lang] ?? data.translations?.KO ?? {};
-    // ✅ merged 우선 사용
-    const m = tr.merged;
-    if (typeof m === 'string') return m;
-    if (m?.body) return m.body;
+    
+    // 1. Try selected language translation
+    const tr = data.translations?.[lang];
+    if (tr) {
+      if (tr.merged) {
+        if (typeof tr.merged === 'string') {
+          console.log(`[DayContent:displayBody] lang=${lang}, usedField=translations.${lang}.merged (string)`);
+          return tr.merged;
+        }
+        if (tr.merged.body) {
+          console.log(`[DayContent:displayBody] lang=${lang}, usedField=translations.${lang}.merged.body`);
+          return tr.merged.body;
+        }
+      }
+      if (tr.devotion?.body) {
+        console.log(`[DayContent:displayBody] lang=${lang}, usedField=translations.${lang}.devotion.body`);
+        return tr.devotion.body;
+      }
+      if (tr.dry?.body) {
+        console.log(`[DayContent:displayBody] lang=${lang}, usedField=translations.${lang}.dry.body`);
+        return tr.dry.body;
+      }
+    }
 
-    // Legacy fallback
-    const devBody = tr?.devotion?.body ?? '';
-    const dryBody = tr?.dry?.body ?? '';
-    return devBody || dryBody || data.commentary || '';
+    // 2. Fallback to KO translation
+    const koTr = data.translations?.KO;
+    if (koTr) {
+      if (koTr.merged) {
+        if (typeof koTr.merged === 'string') {
+          console.log(`[DayContent:displayBody] lang=${lang} (fallback to KO), usedField=translations.KO.merged (string)`);
+          return koTr.merged;
+        }
+        if (koTr.merged.body) {
+          console.log(`[DayContent:displayBody] lang=${lang} (fallback to KO), usedField=translations.KO.merged.body`);
+          return koTr.merged.body;
+        }
+      }
+      if (koTr.devotion?.body) {
+        console.log(`[DayContent:displayBody] lang=${lang} (fallback to KO), usedField=translations.KO.devotion.body`);
+        return koTr.devotion.body;
+      }
+      if (koTr.dry?.body) {
+        console.log(`[DayContent:displayBody] lang=${lang} (fallback to KO), usedField=translations.KO.dry.body`);
+        return koTr.dry.body;
+      }
+    }
+
+    // 3. Fallback to root fields
+    const rootM = data.merged;
+    if (rootM) {
+      if (typeof rootM === 'string') {
+        console.log(`[DayContent:displayBody] lang=${lang} (fallback to root), usedField=root.merged (string)`);
+        return rootM;
+      }
+      if (rootM.body) {
+        console.log(`[DayContent:displayBody] lang=${lang} (fallback to root), usedField=root.merged.body`);
+        return rootM.body;
+      }
+    }
+    if (data.commentary) {
+      console.log(`[DayContent:displayBody] lang=${lang} (fallback to root), usedField=root.commentary`);
+      return data.commentary;
+    }
+
+    console.log(`[DayContent:displayBody] lang=${lang}, usedField=none (empty)`);
+    return '';
   }, [data, lang]);
 
   const displayVerse = useMemo(() => {
