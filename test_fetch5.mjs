@@ -10,8 +10,15 @@ fetch(url).then(res => res.text()).then(text => {
   const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
   const data = JSON.parse(jsonStr);
   const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  
+  // Let's check if there are any keys that start with "ko_" or "en_" or "jp_"
+  const keys = Object.keys(item);
+  const langPrefixes = ['ko_', 'en_', 'jp_', 'cn_', 'es_', 'de_', 'hi_', 'he_'];
+  keys.forEach(key => {
+    langPrefixes.forEach(prefix => {
+      if (key.toLowerCase().startsWith(prefix)) {
+        console.log(`Found lang-prefixed key: ${key}`);
+      }
+    });
+  });
 }).catch(console.error);

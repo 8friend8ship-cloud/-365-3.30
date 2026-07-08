@@ -10,8 +10,18 @@ fetch(url).then(res => res.text()).then(text => {
   const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
   const data = JSON.parse(jsonStr);
   const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  
+  // Let's search for "JP" in the item keys
+  console.log("Keys containing JP:", Object.keys(item).filter(k => k.includes('JP')));
+  
+  // Let's search for "JP" in the item values
+  console.log("Values containing JP:", Object.values(item).filter(v => typeof v === 'string' && v.includes('JP')));
+  
+  // Let's search for "JP" in the nested objects
+  console.log("Nested keys containing JP:");
+  Object.keys(item).forEach(k => {
+    if (typeof item[k] === 'object' && item[k] !== null) {
+      console.log(`  In ${k}:`, Object.keys(item[k]).filter(nk => nk.includes('JP')));
+    }
+  });
 }).catch(console.error);

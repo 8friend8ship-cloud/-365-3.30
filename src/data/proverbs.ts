@@ -18,6 +18,8 @@ export interface ProverbData {
   audio?: Record<string, string>; // ✅ 언어별 오디오 URL (KO, EN, JP, CN, ES, DE, HI) - Preview URL
   audio_direct?: Record<string, string>; // ✅ 다운로드용 Direct URL
   audioFileIds?: Record<string, string>; // ✅ 로컬 캐시 키용 File ID
+  situation_i18n?: Record<string, string>; // ✅ 다국어 상황문
+  bible_i18n?: Record<string, { ref: string; text: string }>; // ✅ 다국어 성경 구절
 }
 
 export const proverbs: Record<string, ProverbData> = {

@@ -29,9 +29,9 @@ import { EngineLangKey, EnginePiece, EngineLangBlock, EngineResponseData, DailyP
 
 // ✅ Apps Script WebApp URL (v53.0)
 const WEBAPP_URL =
-  'https://script.google.com/macros/s/AKfycbzMNeTPcLIktMPqzkJnVH4tJG_fZNt6821LQDwJtaBAkr5sYCjpFX_LFS_bBsDJwHne/exec';
+  'https://script.google.com/macros/s/AKfycbwHt92CCmk_9Gu6kPYLwrAith_3SrYUnJE7A8_47RoJxUQlbwGgY-Me2E8rCBdY7WBeNQ/exec';
 const DELIVERY_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
-const SPREADSHEET_ID = '1qHteZrNUa3ln2lix3p1Bufsh1o6WN98Ogoy9acuTlBg';
+const SPREADSHEET_ID = '1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904';
 const ACCESS_TOKEN = import.meta.env.VITE_ACCESS_TOKEN || 'bible2026secret';
 const EDITOR_ID = '109430604282542310163';
 
@@ -507,13 +507,56 @@ export default function App() {
     return tr.devotion?.body || tr.dry?.body || engineData.devotion?.body || engineData.dry?.body || '';
   }, [engineData, appLang]);
 
-  // ✅ 성경 구절 다국어 대응 (서버에서 translations.LANG.bible.text 로 내려줄 경우 대비)
-  const engineBibleText = useMemo(() => {
+  const engineSituation = useMemo(() => {
     if (!engineData) return '';
-    const tr = engineData.translations?.[appLang] ?? engineData.translations?.KO ?? {};
-    // @ts-ignore - 서버에서 bible 번역을 추가할 경우를 대비
-    if (tr.bible?.text) return tr.bible.text;
-    return engineData.bible?.text || '';
+    
+    // Priority 1: situation_i18n[appLang] (Highest Priority)
+    if (engineData.situation_i18n?.[appLang]) {
+      console.log(`[engineSituation] Using situation_i18n[${appLang}]:`, engineData.situation_i18n[appLang]);
+      return engineData.situation_i18n[appLang];
+    }
+
+    const tr = engineData.translations?.[appLang] || engineData.langs?.[appLang];
+    const m = tr?.merged;
+    const d = tr?.devotion;
+    const dr = tr?.dry;
+    
+    // Priority 2: inside merged, devotion, or dry
+    if (typeof m === 'object' && (m as any)?.situation) return (m as any).situation;
+    if (typeof d === 'object' && (d as any)?.situation) return (d as any).situation;
+    if (typeof dr === 'object' && (dr as any)?.situation) return (dr as any).situation;
+    
+    // Priority 3: translations[appLang].situation or langs[appLang].situation
+    if (tr?.situation) return tr.situation;
+    
+    // Fallback: situation
+    return engineData.situation || '';
+  }, [engineData, appLang]);
+
+  const engineBible = useMemo(() => {
+    if (!engineData) return { ref: '', text: '' };
+    
+    // Priority 1: bible_i18n[appLang] (Highest Priority)
+    if (engineData.bible_i18n?.[appLang]) {
+      console.log(`[engineBible] Using bible_i18n[${appLang}]:`, engineData.bible_i18n[appLang]);
+      return engineData.bible_i18n[appLang];
+    }
+
+    const tr = engineData.translations?.[appLang] || engineData.langs?.[appLang];
+    const m = tr?.merged;
+    const d = tr?.devotion;
+    const dr = tr?.dry;
+    
+    // Priority 2: inside merged, devotion, or dry
+    if (typeof m === 'object' && (m as any)?.bible) return (m as any).bible;
+    if (typeof d === 'object' && (d as any)?.bible) return (d as any).bible;
+    if (typeof dr === 'object' && (dr as any)?.bible) return (dr as any).bible;
+    
+    // Priority 3: translations[appLang].bible or langs[appLang].bible
+    if (tr?.bible) return tr.bible;
+    
+    // Fallback: bible
+    return engineData.bible || { ref: '', text: '' };
   }, [engineData, appLang]);
 
   const [engineAudio, setEngineAudio] = useState<string>('');
@@ -812,7 +855,7 @@ export default function App() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="space-y-1">
                       <div className="text-base font-bold text-gray-900">{engineData.id || 'ENGINE_RESULT'}</div>
-                      {engineData.situation && <div className="text-sm text-gray-600">{engineData.situation}</div>}
+                      {engineSituation && <div className="text-sm text-gray-600">{engineSituation}</div>}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -856,9 +899,9 @@ export default function App() {
                               id: key,
                               reference: key,
                               title: engineTitle,
-                              verse: engineData.bible?.text || '',
-                              source: engineData.bible?.ref || `잠언 ${key}`,
-                              theme: engineData.situation || '지혜',
+                              verse: engineBible.text || '',
+                              source: engineBible.ref || `잠언 ${key}`,
+                              theme: engineSituation || '지혜',
                               commentary: engineBody,
                               application: '오늘의 적용을 실천해봅시다.',
                               accentColor: '#5D6D5F',
@@ -883,10 +926,10 @@ export default function App() {
                   </div>
 
                   <div className="space-y-3">
-                    {engineData.bible && (
+                    {engineBible.ref && (
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 italic text-sm text-gray-600">
-                        <span className="font-bold block mb-1">{engineData.bible.ref}</span>
-                        {engineBibleText}
+                        <span className="font-bold block mb-1">{engineBible.ref}</span>
+                        {engineBible.text}
                       </div>
                     )}
                     <h2 className="text-xl font-bold serif text-[#2b3a2f]">{engineTitle || '제목 없음'}</h2>

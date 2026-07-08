@@ -19,17 +19,6 @@ const decrypt = (encoded: string, salt: string) => {
 };
 
 export const getAI = () => {
-  // 1. Check external (user-provided) key first
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    const externalKey = decrypt(saved, APP_SALT);
-    if (externalKey) {
-      console.log("🚀 Using external API key provided by user");
-      return new GoogleGenAI({ apiKey: externalKey });
-    }
-  }
-
-  // 2. Fallback to internal environment key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.warn("GEMINI_API_KEY is missing");

@@ -28,6 +28,7 @@ export type EngineLangBlock = {
 export type EngineResponseData = {
   id?: string;
   situation?: string;
+  situation_i18n?: Partial<Record<EngineLangKey, string>>;
   dry?: EnginePiece;
   devotion?: EnginePiece;
   merged?: string | EnginePiece;
@@ -35,6 +36,7 @@ export type EngineResponseData = {
   tags?: string[];
   status?: string;
   bible?: { ref: string; text: string };
+  bible_i18n?: Partial<Record<EngineLangKey, { ref: string; text: string }>>;
   audio?: { 
     KO?: string;
     EN?: string;

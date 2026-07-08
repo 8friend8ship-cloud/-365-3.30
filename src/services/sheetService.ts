@@ -1,8 +1,8 @@
 import { ProverbData } from '../data/proverbs';
 
-const BASE_URL = "https://script.google.com/macros/s/AKfycbzMNeTPcLIktMPqzkJnVH4tJG_fZNt6821LQDwJtaBAkr5sYCjpFX_LFS_bBsDJwHne/exec";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbwHt92CCmk_9Gu6kPYLwrAith_3SrYUnJE7A8_47RoJxUQlbwGgY-Me2E8rCBdY7WBeNQ/exec";
 const TOKEN = "bible2026secret";
-const SPREADSHEET_ID = "1qHteZrNUa3ln2lix3p1Bufsh1o6WN98Ogoy9acuTlBg";
+const SPREADSHEET_ID = "1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904";
 const EDITOR_ID = "109430604282542310163";
 
 export type FetchType = 'today' | 'latest' | 'day';
@@ -30,6 +30,8 @@ interface SheetItem {
   youtube?: string;
   createdAt: string;
   translations?: Record<string, { title: string; body: string }>;
+  situation_i18n?: Record<string, string>;
+  bible_i18n?: Record<string, { ref: string; text: string }>;
 }
 
 interface SheetResponse {
@@ -73,47 +75,31 @@ export async function fetchProverbsFromSheet(type: FetchType = 'latest', dayKey?
       }
 
       // 다국어 데이터 매핑
-      const translations: Record<string, any> = item.translations || {};
+      const translations: Record<string, any> = {};
       
-      // langs 필드가 있으면 우선 사용
-      if (item.langs) {
-        Object.entries(item.langs).forEach(([lang, content]) => {
+      // API에서 받은 translations를 ProverbData 구조에 맞게 매핑
+      if (item.translations) {
+        Object.entries(item.translations).forEach(([lang, content]: [string, any]) => {
           translations[lang] = {
-            ...translations[lang],
-            ...content,
-            merged: content.merged || { title: content.title || '', body: content.body || '' }
+            merged: {
+              title: content.dry?.title || '',
+              body: content.dry?.body || ''
+            },
+            devotion: {
+              title: content.devotion?.title || '',
+              body: content.devotion?.body || ''
+            }
           };
         });
       }
 
-      // 개별 필드로 들어올 경우를 대비한 매핑 (title_en, en_title, dry_en 등 다양한 패턴 대응)
-      const langs = ['EN', 'JP', 'CN', 'ES', 'DE', 'HI'];
-      langs.forEach(lang => {
-        const lowerLang = lang.toLowerCase();
-        // @ts-ignore
-        const title = item[`title_${lowerLang}`] || item[`${lowerLang}_title`] || item[`dry_${lowerLang}`]?.title;
-        // @ts-ignore
-        const body = item[`body_${lowerLang}`] || item[`${lowerLang}_body`] || item[`devotion_${lowerLang}`]?.body;
-        
-        if (title || body) {
-          translations[lang] = {
-            ...translations[lang],
-            title: title || translations[lang]?.title || '',
-            body: body || translations[lang]?.body || '',
-            merged: { 
-              title: title || translations[lang]?.title || '', 
-              body: body || translations[lang]?.body || '' 
-            }
-          };
-        }
-      });
-
-      // KO는 기본 dry/devotion 사용
-      translations['KO'] = {
-        dry: item.dry,
-        devotion: item.devotion,
-        merged: item.merged
-      };
+      // KO는 기본 dry/devotion 사용 (translations에 없으면 추가)
+      if (!translations['KO']) {
+        translations['KO'] = {
+          merged: { title: item.dry.title, body: item.dry.body },
+          devotion: { title: item.devotion.title, body: item.devotion.body }
+        };
+      }
 
       // 오디오 URL 보정
       const fixedAudio: Record<string, string> = {};
@@ -147,6 +133,8 @@ export async function fetchProverbsFromSheet(type: FetchType = 'latest', dayKey?
         audio_direct: fixedAudioDirect,
         audioFileIds: item.audioFileIds,
         translations: translations,
+        situation_i18n: item.situation_i18n,
+        bible_i18n: item.bible_i18n,
       };
     });
 

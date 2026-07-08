@@ -7,11 +7,7 @@ const EDITOR_ID = '109430604282542310163';
 const url = `${WEBAPP_URL}?type=today&token=${ACCESS_TOKEN}&spreadsheetId=${SPREADSHEET_ID}&editorId=${EDITOR_ID}&callback=cb`;
 
 fetch(url).then(res => res.text()).then(text => {
-  const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
-  const data = JSON.parse(jsonStr);
-  const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  console.log(text.substring(0, 500));
+  console.log("... skipping middle ...");
+  console.log(text.substring(text.length - 500));
 }).catch(console.error);

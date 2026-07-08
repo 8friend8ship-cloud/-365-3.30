@@ -10,8 +10,7 @@ fetch(url).then(res => res.text()).then(text => {
   const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
   const data = JSON.parse(jsonStr);
   const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  console.log('dry:', JSON.stringify(item.dry, null, 2));
+  console.log('devotion:', JSON.stringify(item.devotion, null, 2));
+  console.log('merged:', JSON.stringify(item.merged, null, 2));
 }).catch(console.error);

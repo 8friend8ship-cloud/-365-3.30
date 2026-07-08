@@ -4,14 +4,11 @@ const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwHt92CCmk_9Gu6kPYLw
 const SPREADSHEET_ID = '1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904';
 const ACCESS_TOKEN = 'bible2026secret';
 const EDITOR_ID = '109430604282542310163';
-const url = `${WEBAPP_URL}?type=today&token=${ACCESS_TOKEN}&spreadsheetId=${SPREADSHEET_ID}&editorId=${EDITOR_ID}&callback=cb`;
+const url = `${WEBAPP_URL}?type=recent&token=${ACCESS_TOKEN}&spreadsheetId=${SPREADSHEET_ID}&editorId=${EDITOR_ID}&callback=cb`;
 
 fetch(url).then(res => res.text()).then(text => {
   const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
   const data = JSON.parse(jsonStr);
-  const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  console.log(Object.keys(data.items[0]));
+  console.log(Object.keys(data.items[1] || {}));
 }).catch(console.error);

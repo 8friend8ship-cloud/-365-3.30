@@ -10,8 +10,19 @@ fetch(url).then(res => res.text()).then(text => {
   const jsonStr = text.replace(/^cb\(/, '').replace(/\);?$/, '');
   const data = JSON.parse(jsonStr);
   const item = data.items[0];
-  console.log('Keys in item:', Object.keys(item));
-  if (item.JP) console.log('JP:', JSON.stringify(item.JP, null, 2));
-  if (item.translations) console.log('translations:', JSON.stringify(item.translations, null, 2));
-  if (item.langs) console.log('langs:', JSON.stringify(item.langs, null, 2));
+  
+  // Let's print all keys that might be language codes
+  const langKeys = ['KO', 'EN', 'JP', 'CN', 'ES', 'DE', 'HI', 'HE'];
+  langKeys.forEach(lang => {
+    if (item[lang]) {
+      console.log(`Found ${lang} at top level:`, Object.keys(item[lang]));
+    }
+  });
+
+  // Let's print all keys that contain "title" or "body" or "dry" or "dev"
+  Object.keys(item).forEach(key => {
+    if (key.toLowerCase().includes('title') || key.toLowerCase().includes('body') || key.toLowerCase().includes('dry') || key.toLowerCase().includes('dev')) {
+      console.log(`Found key: ${key}`);
+    }
+  });
 }).catch(console.error);
