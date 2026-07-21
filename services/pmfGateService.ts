@@ -1,0 +1,3 @@
+export const PMF_APP_ID='APP_BIBLE365';
+export async function getBible365PmfContext(){const r=await fetch(`/api/pmf-context?appId=${PMF_APP_ID}`,{cache:'no-store'});const p=await r.json();if(!r.ok||!p.ok)throw new Error(p.error||'PMF context failed');return p;}
+export async function recordBible365Voc(rawText:string,extra:Record<string,unknown>={}){const r=await fetch('/api/pmf-context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'pmf_record_voc',appId:PMF_APP_ID,rawText,sourceType:'FRONT_APP',...extra})});const p=await r.json();if(!r.ok||!p.ok)throw new Error(p.error||'VOC save failed');return p;}
