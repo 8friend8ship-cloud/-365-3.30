@@ -6,79 +6,133 @@ import { fileURLToPath } from 'url';
 import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const READ_ACTIONS = new Set(['dashboard', 'mail', 'schedule', 'queue']);
+const WRITE_ACTIONS = new Set(['create_task', 'mark_reviewed']);
 
-// GAS WebApp URL and Token
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
-const ACCESS_TOKEN = process.env.VITE_ACCESS_TOKEN || 'bible2026secret';
+function env(name: string): string {
+  return String(process.env[name] || '').trim();
+}
+
+function boundedLimit(value: unknown): number {
+  const parsed = Number(value ?? 50);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.min(Math.max(Math.trunc(parsed), 1), 200);
+}
+
+async function proxyAgentGet(action: string, limit: number) {
+  const endpoint = env('AGENT_MAIL_ENDPOINT');
+  const token = env('AGENT_MAIL_TOKEN');
+  if (!endpoint || !token) throw new Error('AGENT_MAIL_ENDPOINT 또는 AGENT_MAIL_TOKEN이 없습니다.');
+
+  const target = new URL(endpoint);
+  target.searchParams.set('action', action);
+  target.searchParams.set('limit', String(limit));
+  target.searchParams.set('token', token);
+
+  const response = await fetch(target, { cache: 'no-store' });
+  const text = await response.text();
+  if (!response.ok) throw new Error(text || `Apps Script 오류 (${response.status})`);
+  return text;
+}
+
+async function proxyAgentPost(body: Record<string, unknown>) {
+  const endpoint = env('AGENT_MAIL_ENDPOINT');
+  const token = env('AGENT_MAIL_TOKEN');
+  if (!endpoint || !token) throw new Error('AGENT_MAIL_ENDPOINT 또는 AGENT_MAIL_TOKEN이 없습니다.');
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, token }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(text || `Apps Script 오류 (${response.status})`);
+  return text;
+}
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
-  // ✅ Audio Proxy Endpoint
-  app.get('/api/audio-proxy', async (req, res) => {
-    const fileId = req.query.id as string;
-    
-    if (!fileId) {
-      res.status(400).json({ error: 'Missing fileId' });
-      return;
+  app.use(express.json({ limit: '1mb' }));
+
+  app.get('/api/agent/:action', async (req, res) => {
+    const action = String(req.params.action || '').toLowerCase();
+    if (!READ_ACTIONS.has(action)) {
+      return res.status(400).json({ ok: false, error: '지원하지 않는 조회 action입니다.' });
     }
 
     try {
-      // 1. Call GAS to get audio data (JSON with base64)
-      const gasUrl = `${WEBAPP_URL}?type=audio_json&id=${fileId}&token=${ACCESS_TOKEN}`;
-      console.log(`[Proxy] Fetching audio from GAS: ${fileId}`);
-      
-      const response = await fetch(gasUrl);
-      if (!response.ok) {
-        throw new Error(`GAS responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success || !data.dataUri) {
-        throw new Error(data.message || 'Invalid response from GAS');
-      }
-
-      // 2. Extract Base64 data
-      // dataUri format: "data:audio/mp3;base64,SUQzBAAAAA..."
-      const matches = data.dataUri.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      
-      if (!matches || matches.length !== 3) {
-        throw new Error('Invalid data URI format');
-      }
-
-      const mimeType = matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      // 3. Stream audio to client
-      res.setHeader('Content-Type', mimeType);
-      res.setHeader('Content-Length', buffer.length);
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-      res.send(buffer);
-
-    } catch (error: any) {
-      console.error('[Proxy] Error:', error.message);
-      res.status(500).json({ error: 'Failed to fetch audio', details: error.message });
+      const text = await proxyAgentGet(action, boundedLimit(req.query.limit));
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).type('application/json').send(text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '작업큐 조회 오류';
+      return res.status(500).json({ ok: false, error: message });
     }
   });
 
-  // Vite middleware for development
+  app.post('/api/agent', async (req, res) => {
+    const action = String(req.body?.action || '').toLowerCase();
+    if (!WRITE_ACTIONS.has(action)) {
+      return res.status(400).json({ ok: false, error: '지원하지 않는 변경 action입니다.' });
+    }
+
+    try {
+      const text = await proxyAgentPost({ ...req.body, action });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).type('application/json').send(text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '작업큐 등록 오류';
+      return res.status(500).json({ ok: false, error: message });
+    }
+  });
+
+  app.get('/api/audio-proxy', async (req, res) => {
+    const fileId = String(req.query.id || '');
+    if (!fileId) return res.status(400).json({ error: 'Missing fileId' });
+
+    const webAppUrl = env('BIBLE_GAS_WEBAPP_URL');
+    const accessToken = env('BIBLE_GAS_ACCESS_TOKEN');
+    if (!webAppUrl || !accessToken) {
+      return res.status(503).json({ error: 'Bible GAS environment is not configured' });
+    }
+
+    try {
+      const gasUrl = new URL(webAppUrl);
+      gasUrl.searchParams.set('type', 'audio_json');
+      gasUrl.searchParams.set('id', fileId);
+      gasUrl.searchParams.set('token', accessToken);
+
+      const response = await fetch(gasUrl);
+      if (!response.ok) throw new Error(`GAS responded with ${response.status}`);
+
+      const data = await response.json() as { success?: boolean; dataUri?: string; message?: string };
+      if (!data.success || !data.dataUri) throw new Error(data.message || 'Invalid response from GAS');
+
+      const matches = data.dataUri.match(/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) throw new Error('Invalid data URI format');
+
+      const buffer = Buffer.from(matches[2], 'base64');
+      res.setHeader('Content-Type', matches[1]);
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(buffer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch audio';
+      console.error('[Audio Proxy]', message);
+      return res.status(500).json({ error: 'Failed to fetch audio', details: message });
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
-    // Production static file serving
     const distPath = path.resolve(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
-      });
+      app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
     }
   }
 
@@ -87,4 +141,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('Server failed to start:', error);
+  process.exitCode = 1;
+});
