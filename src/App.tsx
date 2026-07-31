@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Menu, 
@@ -17,15 +17,16 @@ import {
   Volume2
 } from 'lucide-react';
 import DayContent from './components/DayContent';
-import AILab from './components/AILab';
-import ProverbList from './components/ProverbList';
-import StrategyDashboard from './components/StrategyDashboard';
-import AdminDashboard from './components/AdminDashboard';
 import DialogModal from './components/DialogModal';
 import { proverbs as initialProverbs, defaultVerse, ProverbData } from './data/proverbs';
 import { getUIText } from './i18n/uiTexts';
 
 import { EngineLangKey, EnginePiece, EngineLangBlock, EngineResponseData, DailyPack } from './types';
+
+const AILab = lazy(() => import('./components/AILab'));
+const ProverbList = lazy(() => import('./components/ProverbList'));
+const StrategyDashboard = lazy(() => import('./components/StrategyDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 // Public routing identifiers come from deployment configuration.
 // Secrets and long-lived access tokens must never be bundled into this browser app.
@@ -828,7 +829,11 @@ export default function App() {
         </div>
       </nav>
 
-      {isListOpen && <ProverbList proverbs={proverbsData} onSelectVerse={handleSelectVerse} lang={appLang} />}
+      {isListOpen && (
+        <Suspense fallback={null}>
+          <ProverbList proverbs={proverbsData} onSelectVerse={handleSelectVerse} lang={appLang} />
+        </Suspense>
+      )}
 
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div id="content-area" className="space-y-12">
@@ -1032,19 +1037,31 @@ export default function App() {
           )}
         </div>
 
-        <AILab verseData={currentVerseData} isOpen={isLabOpen} onClose={() => setIsLabOpen(false)} lang={appLang} />
-        <StrategyDashboard isOpen={isDashboardOpen} onClose={() => setIsDashboardOpen(false)} lang={appLang} />
-        <AdminDashboard
-          isOpen={isAdminOpen}
-          onClose={() => setIsAdminOpen(false)}
-          proverbs={proverbsData}
-          setProverbs={setProverbsData}
-          lang={appLang}
-          enginePack={enginePack}
-          onRefreshEngine={() => callBibleEngine('today', true)}
-          isLoadingEngine={isEngineLoading}
-          deliveryEngineUrl={DELIVERY_ENGINE_URL}
-        />
+        {isLabOpen && (
+          <Suspense fallback={null}>
+            <AILab verseData={currentVerseData} isOpen onClose={() => setIsLabOpen(false)} lang={appLang} />
+          </Suspense>
+        )}
+        {isDashboardOpen && (
+          <Suspense fallback={null}>
+            <StrategyDashboard isOpen onClose={() => setIsDashboardOpen(false)} lang={appLang} />
+          </Suspense>
+        )}
+        {isAdminOpen && (
+          <Suspense fallback={null}>
+            <AdminDashboard
+              isOpen
+              onClose={() => setIsAdminOpen(false)}
+              proverbs={proverbsData}
+              setProverbs={setProverbsData}
+              lang={appLang}
+              enginePack={enginePack}
+              onRefreshEngine={() => callBibleEngine('today', true)}
+              isLoadingEngine={isEngineLoading}
+              deliveryEngineUrl={DELIVERY_ENGINE_URL}
+            />
+          </Suspense>
+        )}
       </main>
 
       <footer className="bg-white border-t border-gray-100 py-12 mt-20">
