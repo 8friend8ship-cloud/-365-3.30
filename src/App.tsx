@@ -27,13 +27,16 @@ import { getUIText } from './i18n/uiTexts';
 
 import { EngineLangKey, EnginePiece, EngineLangBlock, EngineResponseData, DailyPack } from './types';
 
-// ✅ Apps Script WebApp URL (v53.0)
-const WEBAPP_URL =
-  'https://script.google.com/macros/s/AKfycbwHt92CCmk_9Gu6kPYLwrAith_3SrYUnJE7A8_47RoJxUQlbwGgY-Me2E8rCBdY7WBeNQ/exec';
-const DELIVERY_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
-const SPREADSHEET_ID = '1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904';
-const ACCESS_TOKEN = import.meta.env.VITE_ACCESS_TOKEN || 'bible2026secret';
-const EDITOR_ID = '109430604282542310163';
+// Public routing identifiers come from deployment configuration.
+// Secrets and long-lived access tokens must never be bundled into this browser app.
+const WEBAPP_URL = (import.meta.env.VITE_BIBLE_ENGINE_URL || '').trim();
+const DELIVERY_ENGINE_URL = (import.meta.env.VITE_DELIVERY_ENGINE_URL || '').trim();
+const SPREADSHEET_ID = (import.meta.env.VITE_BIBLE_SPREADSHEET_ID || '').trim();
+const EDITOR_ID = (import.meta.env.VITE_BIBLE_EDITOR_ID || '').trim();
+const ENGINE_CONFIG_ERROR =
+  !WEBAPP_URL || !SPREADSHEET_ID
+    ? '성경 엔진 연결 설정이 완료되지 않아 저장된 콘텐츠만 표시합니다.'
+    : null;
 
 export default function App() {
   const [proverbsData, setProverbsData] = useState<Record<string, ProverbData>>(() => {
@@ -136,14 +139,15 @@ export default function App() {
     callBibleEngine();
   }, []);
 
-  // ✅ URL 빌더 (토큰 및 시트 ID 자동 포함)
+  // Public identifiers may be sent to the read-only engine route.
+  // Authentication is enforced server-side; no browser token is appended.
   const buildEngineUrl = (params: Record<string, string>) => {
+    if (ENGINE_CONFIG_ERROR) throw new Error(ENGINE_CONFIG_ERROR);
     const url = new URL(WEBAPP_URL);
     Object.entries(params).forEach(([key, val]) => url.searchParams.set(key, val));
-    url.searchParams.set('token', ACCESS_TOKEN);
     url.searchParams.set('spreadsheetId', SPREADSHEET_ID);
-    url.searchParams.set('editorId', EDITOR_ID);
-    url.searchParams.set('t', Date.now().toString()); // 브라우저 캐시 완벽 차단
+    if (EDITOR_ID) url.searchParams.set('editorId', EDITOR_ID);
+    url.searchParams.set('t', Date.now().toString());
     return url.toString();
   };
 
@@ -226,6 +230,12 @@ export default function App() {
 
   // ✅ 엔진 호출 (JSONP 방식) - 재귀적 폴백 지원 (로컬 캐싱 추가)
   const callBibleEngine = async (requestType: 'today' | 'latest' | 'random' = 'today', force = false) => {
+    if (ENGINE_CONFIG_ERROR) {
+      setEngineError(ENGINE_CONFIG_ERROR);
+      setIsEngineLoading(false);
+      return;
+    }
+
     // ✅ 오늘 날짜 기반 캐시 키 생성
     const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
     const cacheKey = `bible_engine_cache_${todayStr}`;
@@ -446,6 +456,11 @@ export default function App() {
 
   // ✅ 엔진 헬스체크 (디버그용)
   const checkEngineHealth = async () => {
+    if (ENGINE_CONFIG_ERROR) {
+      setEngineError(ENGINE_CONFIG_ERROR);
+      setHealthStatus('error');
+      return;
+    }
     setHealthStatus('checking');
     const callbackName = `__be_health_cb_${Date.now()}`;
     const script = document.createElement('script');
@@ -647,6 +662,10 @@ export default function App() {
   // ✅ 음성 생성 호출 (통합된 'merged' 타입 사용)
   const generateVoice = async (text: string) => {
     if (!text) return;
+    if (ENGINE_CONFIG_ERROR) {
+      showAlert(ENGINE_CONFIG_ERROR);
+      return;
+    }
     setIsEngineLoading(true);
     
     const callbackName = `__be_voice_cb_${Date.now()}`;
