@@ -1,30 +1,12 @@
-import { GoogleGenAI } from '@google/genai';
 import { AIHistoryItem } from '../types';
 
-const APP_SALT = "BIBLE_ENGINE_2026_SECURE_SALT";
-const STORAGE_KEY = "EXTERNAL_API_KEYS_ENCRYPTED";
 const HISTORY_KEY = "AI_GENERATION_HISTORY";
 
-const decrypt = (encoded: string, salt: string) => {
-  try {
-    const text = atob(encoded);
-    const textChars = text.split('');
-    const saltChars = salt.split('');
-    return textChars.map((c, i) => 
-      String.fromCharCode(c.charCodeAt(0) ^ saltChars[i % saltChars.length].charCodeAt(0))
-    ).join('');
-  } catch (e) {
-    return '';
-  }
-};
-
+// Browser-side model clients and API keys are intentionally disabled.
+// AI generation must go through the audited central Writer/Media backend.
 export const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("GEMINI_API_KEY is missing");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
+  console.warn("DIRECT_BROWSER_AI_DISABLED");
+  return null;
 };
 
 export const saveAIHistory = (item: Omit<AIHistoryItem, 'id' | 'timestamp' | 'date'>) => {
@@ -36,9 +18,8 @@ export const saveAIHistory = (item: Omit<AIHistoryItem, 'id' | 'timestamp' | 'da
     timestamp: now.getTime(),
     date: now.toISOString().split('T')[0]
   };
-  
+
   history.unshift(newItem);
-  // Limit to last 100 items to avoid localStorage bloat
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 100)));
   return newItem;
 };
@@ -49,7 +30,7 @@ export const getAIHistory = (): AIHistoryItem[] => {
   try {
     const parsed = JSON.parse(saved);
     return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
+  } catch {
     return [];
   }
 };
@@ -64,34 +45,16 @@ export const deleteAIHistoryItem = (id: string) => {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
 };
 
-export const translateEngineFields = async (situation: string, bibleRef: string, bibleText: string, targetLang: string) => {
-  const ai = getAI();
-  if (!ai) return null;
-
-  const prompt = `Translate the following text into ${targetLang}. 
-Return ONLY a valid JSON object with three keys: "situation", "bibleRef", and "bibleText".
-Do not include any markdown formatting or extra text.
-
-Text to translate:
-Situation: ${situation}
-Bible Reference: ${bibleRef}
-Bible Text: ${bibleText}`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-    
-    const text = response.text;
-    if (!text) return null;
-    
-    return JSON.parse(text) as { situation: string, bibleRef: string, bibleText: string };
-  } catch (e) {
-    console.error("Translation failed:", e);
-    return null;
-  }
+export const translateEngineFields = async (
+  situation: string,
+  bibleRef: string,
+  bibleText: string,
+  targetLang: string
+) => {
+  void situation;
+  void bibleRef;
+  void bibleText;
+  void targetLang;
+  console.warn("DIRECT_BROWSER_AI_DISABLED: use the central Writer translation route");
+  return null;
 };
