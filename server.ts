@@ -7,64 +7,74 @@ import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// GAS WebApp URL and Token
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec';
-const ACCESS_TOKEN = process.env.VITE_ACCESS_TOKEN || 'bible2026secret';
+const WEBAPP_URL = process.env.BIBLE365_GAS_WEBAPP_URL?.trim();
+const ACCESS_TOKEN = process.env.BIBLE365_ACCESS_TOKEN?.trim();
+
+function hasRuntimeConfig(): boolean {
+  return Boolean(WEBAPP_URL && ACCESS_TOKEN);
+}
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
-  // ✅ Audio Proxy Endpoint
+  app.get('/api/health', (_req, res) => {
+    res.status(hasRuntimeConfig() ? 200 : 503).json({
+      ok: hasRuntimeConfig(),
+      service: 'bible365-front-proxy',
+      runtimeConfigured: hasRuntimeConfig(),
+    });
+  });
+
   app.get('/api/audio-proxy', async (req, res) => {
+    if (!hasRuntimeConfig()) {
+      res.status(503).json({
+        error: 'Bible365 runtime configuration is missing.',
+        required: ['BIBLE365_GAS_WEBAPP_URL', 'BIBLE365_ACCESS_TOKEN'],
+      });
+      return;
+    }
+
     const fileId = req.query.id as string;
-    
     if (!fileId) {
       res.status(400).json({ error: 'Missing fileId' });
       return;
     }
 
     try {
-      // 1. Call GAS to get audio data (JSON with base64)
-      const gasUrl = `${WEBAPP_URL}?type=audio_json&id=${fileId}&token=${ACCESS_TOKEN}`;
-      console.log(`[Proxy] Fetching audio from GAS: ${fileId}`);
-      
+      const gasUrl = new URL(WEBAPP_URL!);
+      gasUrl.searchParams.set('type', 'audio_json');
+      gasUrl.searchParams.set('id', fileId);
+      gasUrl.searchParams.set('token', ACCESS_TOKEN!);
+
       const response = await fetch(gasUrl);
       if (!response.ok) {
         throw new Error(`GAS responded with ${response.status}`);
       }
 
       const data = await response.json();
-
       if (!data.success || !data.dataUri) {
         throw new Error(data.message || 'Invalid response from GAS');
       }
 
-      // 2. Extract Base64 data
-      // dataUri format: "data:audio/mp3;base64,SUQzBAAAAA..."
-      const matches = data.dataUri.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      
+      const matches = data.dataUri.match(/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
         throw new Error('Invalid data URI format');
       }
 
       const mimeType = matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, 'base64');
+      const buffer = Buffer.from(matches[2], 'base64');
 
-      // 3. Stream audio to client
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Length', buffer.length);
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       res.send(buffer);
-
     } catch (error: any) {
-      console.error('[Proxy] Error:', error.message);
-      res.status(500).json({ error: 'Failed to fetch audio', details: error.message });
+      console.error('[Audio Proxy] Error:', error.message);
+      res.status(502).json({ error: 'Failed to fetch audio', details: error.message });
     }
   });
 
-  // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -72,18 +82,17 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Production static file serving
     const distPath = path.resolve(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
+      app.get('*', (_req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Bible365 server running on port ${PORT}`);
   });
 }
 
