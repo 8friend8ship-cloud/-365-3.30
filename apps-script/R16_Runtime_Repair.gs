@@ -6,11 +6,13 @@
  * 2) Replace the existing saveJsonFile_ body so it delegates to
  *    r16SaveJsonFileSafe_(). Do not leave two saveJsonFile_ functions.
  * 3) Run testR16JsonSave_() once.
- * 4) Only after the test passes, run installR16AutomationTrigger().
+ * 4) Only after the test passes, run one READY item manually.
+ * 5) Only after the full manual E2E passes, run installR16AutomationTrigger().
  */
 
 const R16_AUTOMATION_HANDLER = 'runR16Scheduled_';
 const R16_AUTOMATION_MINUTES = 15;
+const R16_JSON_MIME_TYPE = 'application/json';
 
 /**
  * Safe JSON save implementation that never passes a null MIME type.
@@ -25,19 +27,38 @@ function r16SaveJsonFileSafe_(folderOrId, fileName, payload) {
     throw new Error('R16_JSON_SAVE_INVALID_FOLDER');
   }
 
-  const safeName = String(fileName || 'r16-output.json').endsWith('.json')
-    ? String(fileName || 'r16-output.json')
-    : `${String(fileName || 'r16-output')}.json`;
+  const baseName = String(fileName || 'r16-output.json').trim() || 'r16-output.json';
+  const safeName = /\.json$/i.test(baseName) ? baseName : `${baseName}.json`;
 
-  const jsonText = typeof payload === 'string'
-    ? payload
-    : JSON.stringify(payload, null, 2);
+  let jsonText;
+  if (typeof payload === 'string') {
+    jsonText = payload;
+  } else {
+    try {
+      jsonText = JSON.stringify(payload, null, 2);
+    } catch (error) {
+      throw new Error(`R16_JSON_SERIALIZE_FAILED: ${error && error.message ? error.message : error}`);
+    }
+  }
 
-  const blob = Utilities.newBlob(jsonText, MimeType.JSON, safeName);
+  if (!jsonText) {
+    throw new Error('R16_JSON_SAVE_EMPTY_PAYLOAD');
+  }
+
+  // Apps Script's general MimeType enum does not provide a JSON member.
+  // Utilities.newBlob accepts an explicit MIME type string, so use the
+  // standards-based application/json value instead of a nullable/invalid enum.
+  const blob = Utilities.newBlob(String(jsonText), R16_JSON_MIME_TYPE, safeName);
   const file = folder.createFile(blob);
 
   if (!file || !file.getId()) {
     throw new Error('R16_JSON_SAVE_FAILED');
+  }
+  if (file.getMimeType() !== R16_JSON_MIME_TYPE) {
+    throw new Error(`R16_JSON_MIME_VERIFY_FAILED: ${file.getMimeType()}`);
+  }
+  if (!(file.getSize() > 0)) {
+    throw new Error('R16_JSON_SIZE_VERIFY_FAILED');
   }
 
   return file;
@@ -166,8 +187,13 @@ function testR16JsonSave_() {
     fileId: file.getId(),
     fileName: file.getName(),
     mimeType: file.getMimeType(),
+    size: file.getSize(),
     url: file.getUrl(),
   };
+
+  if (result.mimeType !== R16_JSON_MIME_TYPE || !(result.size > 0)) {
+    throw new Error(`R16_JSON_SAVE_TEST_FAILED: ${JSON.stringify(result)}`);
+  }
 
   console.log(JSON.stringify(result, null, 2));
   return result;
