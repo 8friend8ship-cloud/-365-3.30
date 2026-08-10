@@ -111,6 +111,25 @@ async function refreshToken(client, token) {
   return { ...token, ...t, refresh_token: token.refresh_token, obtained_at: Date.now() };
 }
 
+async function openBrowser(url) {
+  if (process.platform === 'win32') {
+    // Do not use `cmd /c start` here. OAuth URLs contain `&`, which cmd can
+    // interpret as command separators and truncate query parameters such as
+    // response_type=code. Invoke a Windows URL handler directly instead.
+    try {
+      await execFileAsync('rundll32.exe', ['url.dll,FileProtocolHandler', url]);
+    } catch {
+      await execFileAsync('explorer.exe', [url]);
+    }
+    return;
+  }
+  if (process.platform === 'darwin') {
+    await execFileAsync('open', [url]);
+    return;
+  }
+  await execFileAsync('xdg-open', [url]);
+}
+
 async function interactiveAuth(client, scopes) {
   const server = http.createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -125,9 +144,7 @@ async function interactiveAuth(client, scopes) {
   authUrl.searchParams.set('scope', scopes.join(' '));
 
   console.log('OAUTH_BROWSER_OPENING');
-  if (process.platform === 'win32') await execFileAsync('cmd', ['/c', 'start', '', authUrl.toString()]);
-  else if (process.platform === 'darwin') await execFileAsync('open', [authUrl.toString()]);
-  else await execFileAsync('xdg-open', [authUrl.toString()]);
+  await openBrowser(authUrl.toString());
 
   const code = await new Promise((resolve, reject) => {
     server.on('request', (req, res) => {
