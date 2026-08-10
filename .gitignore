@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+.bridge-runtime/
+.clasp.json
+.clasprc.json
