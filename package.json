@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "bridge:bible4:setup": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-clasp-setup.ps1",
     "bridge:bible4:preflight": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-push-test.ps1",
-    "bridge:bible4:prepare": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-prepare-v12.ps1"
+    "bridge:bible4:prepare": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-prepare-v12.ps1",
+    "bridge:bible4:oauth-test": "node ./bridge/bible4-oauth-runner.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
