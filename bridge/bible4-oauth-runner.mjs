@@ -19,6 +19,11 @@ const projectId = 'hd-central-agent-auto';
 
 fs.mkdirSync(secretDir, { recursive: true });
 
+function readJsonFile(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+  return JSON.parse(raw);
+}
+
 function findDesktopClientJson() {
   if (fs.existsSync(clientPath)) return clientPath;
   const downloads = path.join(os.homedir(), 'Downloads');
@@ -29,7 +34,7 @@ function findDesktopClientJson() {
     .sort((a, b) => b.m - a.m);
   for (const c of candidates) {
     try {
-      const j = JSON.parse(fs.readFileSync(c.p, 'utf8'));
+      const j = readJsonFile(c.p);
       if (j?.installed?.client_id && j?.installed?.client_secret) {
         fs.copyFileSync(c.p, clientPath);
         console.log(`OAUTH_CLIENT_IMPORTED=${clientPath}`);
@@ -46,7 +51,7 @@ function deriveScopes() {
   const scopes = new Set(['https://www.googleapis.com/auth/userinfo.email']);
   if (fs.existsSync(manifestPath)) {
     try {
-      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      const m = readJsonFile(manifestPath);
       for (const s of (m.oauthScopes || [])) scopes.add(s);
     } catch {}
   }
@@ -84,7 +89,7 @@ async function getDeploymentId() {
 function updateClaspProjectId() {
   const p = path.join(runtime, '.clasp.json');
   if (!fs.existsSync(p)) return;
-  const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+  const j = readJsonFile(p);
   if (j.projectId !== projectId) {
     j.projectId = projectId;
     fs.writeFileSync(p, JSON.stringify(j, null, 2), 'utf8');
@@ -156,7 +161,7 @@ async function interactiveAuth(client, scopes) {
 async function getAccessToken(client, scopes) {
   let token = null;
   if (fs.existsSync(tokenPath)) {
-    try { token = JSON.parse(fs.readFileSync(tokenPath, 'utf8')); } catch {}
+    try { token = readJsonFile(tokenPath); } catch {}
   }
   if (token?.refresh_token) {
     token = await refreshToken(client, token);
@@ -185,7 +190,7 @@ async function runFunction(deploymentId, accessToken, functionName, devMode = tr
 async function main() {
   console.log('=== Bible4 OAuth Execution Bridge ===');
   const p = findDesktopClientJson();
-  const root = JSON.parse(fs.readFileSync(p, 'utf8'));
+  const root = readJsonFile(p);
   const client = root.installed;
   updateClaspProjectId();
   const deploymentId = await getDeploymentId();
