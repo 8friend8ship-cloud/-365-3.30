@@ -9,7 +9,11 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "bridge:bible4:setup": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-clasp-setup.ps1",
+    "bridge:bible4:preflight": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-push-test.ps1",
+    "bridge:bible4:prepare": "powershell -ExecutionPolicy Bypass -File ./bridge/bible4-prepare-v12.ps1",
+    "bridge:bible4:oauth-test": "node ./bridge/bible4-oauth-runner.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -27,6 +31,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@google/clasp": "^3.0.6",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
