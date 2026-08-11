@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { getAI, saveAIHistory } from '../services/aiService';
-import { Modality } from "@google/genai";
 import { ProverbData } from '../data/proverbs';
 import { getUIText } from '../i18n/uiTexts';
 import { Download, FileText, Image as ImageIcon, Music } from 'lucide-react';
@@ -67,237 +65,35 @@ export default function AILab({ verseData, isOpen, onClose, lang = 'KO' }: AILab
 
   if (!isOpen || !verseData) return null;
 
+  const blockDirectBrowserAI = (feature: string) => {
+    // DIRECT_BROWSER_AI_DISABLED: route AI work through the audited central Writer/Media backend.
+    setAiResponse(`${feature} 기능은 안전한 중앙 Writer/Media 연결이 완료될 때까지 실행하지 않습니다.`);
+    setGroundingLinks([]);
+    setGeneratedImage(null);
+    setLoadingGuru(false);
+    setLoadingInsight(false);
+    setLoadingArt(false);
+    setLoadingTTS(false);
+  };
+
   const askAIGuru = async () => {
     if (!query || !verseData) return;
-    const ai = getAI();
-    if (!ai) {
-      setAiResponse("API Key가 설정되지 않았습니다. [관리자 > API Key 관리]에서 등록해주세요.");
-      return;
-    }
-
-    setLoadingGuru(true);
-    setAiResponse(null);
-    setGroundingLinks([]);
-
-    const verse = verseData.reference;
-    const sysInstruction = `You are a biblical wisdom mentor. Combine today's verse (${verse}) with the message of Rev. Yonggi Cho to provide advice containing 'admonition' and 'wisdom' regarding the user's concerns. Please answer in ${lang} language and apply the meaning of the verse realistically.`;
-
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: query }] }],
-        config: {
-          systemInstruction: sysInstruction,
-        }
-      });
-      const text = response.text || "답변을 생성할 수 없습니다.";
-      setAiResponse(text);
-      
-      saveAIHistory({
-        type: 'counseling',
-        title: `${t('aiLabMentorTitle')} - ${verse}`,
-        query: query,
-        response: text,
-        verseRef: verse
-      });
-    } catch (error) {
-      console.error(error);
-      setAiResponse("상담 중 오류가 발생했습니다.");
-    } finally {
-      setLoadingGuru(false);
-    }
+    blockDirectBrowserAI('AI 지혜 상담');
   };
 
   const searchDeepInsight = async () => {
     if (!verseData) return;
-    const ai = getAI();
-    if (!ai) {
-      setAiResponse("API Key가 설정되지 않았습니다. [관리자 > API Key 관리]에서 등록해주세요.");
-      return;
-    }
-
-    setLoadingInsight(true);
-    setAiResponse(null);
-    setGroundingLinks([]);
-
-    const verse = verseData.reference;
-    const prompt = `Search for the original meaning and historical background of key words (wisdom, admonition, understanding, etc.) appearing in today's verse (${verse}) and provide deep theological insights. Please write the answer in ${lang} language.`;
-
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-            tools: [{ googleSearch: {} }],
-        }
-      });
-      
-      const text = response.text || "연구 결과를 찾을 수 없습니다.";
-      setAiResponse(text);
-      
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      let links: { uri: string; title: string }[] = [];
-      if (chunks) {
-        links = chunks
-            .map((c: any) => c.web ? { uri: c.web.uri, title: c.web.title } : null)
-            .filter((l: any) => l !== null);
-        setGroundingLinks(links);
-      }
-
-      saveAIHistory({
-        type: 'insight',
-        title: `${t('aiLabInsightTitle')} - ${verse}`,
-        query: prompt,
-        response: text,
-        verseRef: verse
-      });
-    } catch (error) {
-      console.error(error);
-      setAiResponse("연구 중 오류가 발생했습니다.");
-    } finally {
-      setLoadingInsight(false);
-    }
+    blockDirectBrowserAI('성경 원어·역사 탐색');
   };
 
   const generateWordArt = async () => {
     if (!verseData) return;
-    const ai = getAI();
-    if (!ai) {
-      setAiResponse("API Key가 설정되지 않았습니다. [관리자 > API Key 관리]에서 등록해주세요.");
-      return;
-    }
-
-    setLoadingArt(true);
-    setGeneratedImage(null);
-
-    const theme = verseData.id === 'jan1' 
-      ? 'Light of Wisdom and Humility' 
-      : 'Safety of choosing the path of obedience over shortcut';
-    const prompt = `A cinematic, peaceful, and artistic spiritual illustration representing the theme: \"${theme}\". 16:9 aspect ratio, no text, warm professional aesthetic.`;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: {
-                parts: [ { text: prompt } ],
-            },
-            config: {
-                imageConfig: { aspectRatio: "16:9" },
-            },
-        });
-
-        let base64Image = null;
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                base64Image = part.inlineData.data;
-                break;
-            }
-        }
-
-        if (base64Image) {
-            const dataUrl = `data:image/png;base64,${base64Image}`;
-            setGeneratedImage(dataUrl);
-            
-            saveAIHistory({
-              type: 'art',
-              title: `${t('aiLabArtTitle')} - ${verseData.reference}`,
-              query: prompt,
-              response: 'Image Generated',
-              imageUrl: dataUrl,
-              verseRef: verseData.reference
-            });
-        } else {
-            console.error("No image generated from API response");
-            setAiResponse("AI가 이미지를 생성하지 못했습니다. 응답에 이미지 데이터가 없습니다.");
-        }
-    } catch (error) {
-      console.error("Image generation API error:", error);
-      setAiResponse("이미지 생성 중 API 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-    } finally {
-      setLoadingArt(false);
-    }
+    blockDirectBrowserAI('말씀 이미지 생성');
   };
 
   const speakResponse = async () => {
     if (!aiResponse) return;
-    const ai = getAI();
-    if (!ai) return;
-
-    setLoadingTTS(true);
-
-    try {
-      // 텍스트를 문장 단위로 분리하여 청크 생성 (최대 400자)
-      const sentences = aiResponse.match(/[^.!?\n]+[.!?\n]+/g) || [aiResponse];
-      const chunks: string[] = [];
-      let currentChunk = "";
-
-      for (const sentence of sentences) {
-        if (currentChunk.length + sentence.length > 400) {
-          if (currentChunk) chunks.push(currentChunk.trim());
-          currentChunk = sentence;
-        } else {
-          currentChunk += sentence;
-        }
-      }
-      if (currentChunk) chunks.push(currentChunk.trim());
-
-      const pcmBuffers: ArrayBuffer[] = [];
-
-      for (const chunk of chunks) {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash-preview-tts",
-          contents: [{ parts: [{ text: `Say warmly: ${chunk}` }] }],
-          config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: "Kore" }
-              }
-            }
-          }
-        });
-
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (base64Audio) {
-          const binary = atob(base64Audio);
-          const array = new Uint8Array(binary.length);
-          for(let i=0; i<binary.length; i++) array[i] = binary.charCodeAt(i);
-          pcmBuffers.push(array.buffer);
-        }
-      }
-
-      if (pcmBuffers.length > 0) {
-        // PCM 버퍼 병합
-        const totalLength = pcmBuffers.reduce((acc, buf) => acc + buf.byteLength, 0);
-        const mergedBuffer = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const buf of pcmBuffers) {
-          mergedBuffer.set(new Uint8Array(buf), offset);
-          offset += buf.byteLength;
-        }
-
-        const wav = createWav(mergedBuffer.buffer, 24000);
-        const blob = new Blob([wav], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        
-        setLastAudioUrl(url);
-        const audio = new Audio(url);
-        audio.play();
-        
-        saveAIHistory({
-          type: 'counseling',
-          title: `TTS - ${verseData.reference}`,
-          response: aiResponse.slice(0, 100) + '...',
-          audioUrl: url,
-          verseRef: verseData.reference
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      showAlert("음성 생성 중 오류가 발생했습니다.");
-    } finally {
-      setLoadingTTS(false);
-    }
+    blockDirectBrowserAI('말씀 음성 생성');
   };
 
   const playPCM = (base64: string) => {

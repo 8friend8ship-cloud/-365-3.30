@@ -9,7 +9,8 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node scripts/security-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -34,5 +35,10 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "overrides": {
+    "tsx": {
+      "esbuild": "0.28.1"
+    }
   }
 }
