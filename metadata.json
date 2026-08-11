@@ -1,5 +1,5 @@
 {
-  "name": "Copy of 잠언 365: AI 지혜의 등불",
-  "description": "Interactive Proverbs 365 application with AI wisdom mentoring, historical insight search, and word art generation.",
+  "name": "묵상바이블 | Bible 365",
+  "description": "하루 말씀을 읽고 듣고 묵상하며 저장·공유하는 Bible365 사용자 프런트엔드.",
   "requestFramePermissions": []
 }
