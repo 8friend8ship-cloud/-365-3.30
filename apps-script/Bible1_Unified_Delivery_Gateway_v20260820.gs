@@ -15,7 +15,7 @@ var BIBLE1_UNIFIED = Object.freeze({
   T2_CONTRACT: 'BIBLE365_FRONT_PLATFORM_PACK_V2',
   APP_ID: 'APP_BIBLE365',
   CANONICAL_SPREADSHEET_ID: '1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904',
-  PUBLIC_SHEET: 'Public_Output'
+  PUBLIC_SHEET: '03_Public_Output'
 });
 
 function handleBible1UnifiedGet_(e) {
@@ -104,7 +104,7 @@ function buildBible1UnifiedDeliveryPackage_(type, dayKey) {
 
 function bible1NormalizeFrontItem_(row) {
   var contentId = String(row.CONTENT_ID || row.CONTENT_KEY || row.ID || row.id || '');
-  var dayKey = String(row.DAY_KEY || row.DATE_KEY || row.dayKey || row.DATE || '');
+  var dayKey = String(row.DAY_KEY || row.DATE_KEY || row.dayKey || row.FRONT_VISIBLE_DATE || row.DATE || '');
   var verseRef = String(row.BIBLE_REF || row.VERSE_REF || row.reference || '');
   var verseText = String(row.BIBLE_TEXT || row.VERSE_TEXT || row.verse || '');
 
@@ -115,9 +115,9 @@ function bible1NormalizeFrontItem_(row) {
     dayKey: dayKey,
     verseKey: String(row.VERSE_KEY || row.VERSE_ID || ''),
     situation: String(row.SITUATION || row.situation || ''),
-    dry: bible1SafeJson_(row.DRY_JSON || row.dry, { title: String(row.TITLE || ''), body: String(row.BODY || '') }),
-    devotion: bible1SafeJson_(row.DEVOTION_JSON || row.devotion, { title: String(row.DEVOTION_TITLE || ''), body: String(row.DEVOTION_BODY || '') }),
-    merged: String(row.MERGED || row.merged || row.BODY || ''),
+    dry: bible1SafeJson_(row.DRY_JSON || row.dry, { title: String(row.TITLE || ''), body: String(row.BODY || row.SUMMARY || '') }),
+    devotion: bible1SafeJson_(row.DEVOTION_JSON || row.devotion, { title: String(row.DEVOTION_TITLE || row.TITLE || ''), body: String(row.DEVOTION_BODY || row.SUMMARY || '') }),
+    merged: String(row.MERGED || row.merged || row.BODY || row.SUMMARY || ''),
     translations: bible1SafeJson_(row.TRANSLATIONS_JSON || row.translations, {}),
     situation_i18n: bible1SafeJson_(row.SITUATION_I18N_JSON || row.situation_i18n, {}),
     bible_i18n: bible1SafeJson_(row.BIBLE_I18N_JSON || row.bible_i18n, {}),
@@ -126,8 +126,24 @@ function bible1NormalizeFrontItem_(row) {
     audio: bible1SafeJson_(row.AUDIO_JSON || row.audio, {}),
     audio_direct: bible1SafeJson_(row.AUDIO_DIRECT_JSON || row.audio_direct, {}),
     audioFileIds: bible1SafeJson_(row.AUDIO_FILE_IDS_JSON || row.audioFileIds, {}),
-    sourceLineage: bible1SafeJson_(row.SOURCE_LINEAGE_JSON || row.sourceLineage, {}),
-    rightsStatus: String(row.RIGHTS_STATUS || row.rightsStatus || ''),
+    translationManifestUrl: String(row.TRANSLATION_MANIFEST_URL || ''),
+    audioManifestUrl: String(row.AUDIO_MANIFEST_URL || ''),
+    audioDeliveryExecUrl: String(row.AUDIO_DELIVERY_EXEC_URL || ''),
+    readiness: {
+      content: String(row.CONTENT_READY_YN || ''),
+      translation: String(row.TRANSLATION_READY_YN || ''),
+      audio: String(row.AUDIO_READY_YN || ''),
+      package: String(row.PACKAGE_READY_YN || ''),
+      app: String(row.APP_READY_YN || '')
+    },
+    sourceLineage: bible1SafeJson_(row.SOURCE_LINEAGE_JSON || row.sourceLineage, {
+      coreId: String(row.CORE_ID || ''),
+      sourceDbMapId: String(row.SOURCE_DB_MAP_ID || ''),
+      masterJsonFileId: String(row.MASTER_JSON_FILE_ID || ''),
+      masterDocFileId: String(row.MASTER_DOC_FILE_ID || ''),
+      publicOutputId: String(row.PUBLIC_OUTPUT_ID || '')
+    }),
+    rightsStatus: String(row.RIGHTS_STATUS || row.rightsStatus || 'UNVERIFIED'),
     bloggerCanonicalUrl: String(row.BLOGGER_CANONICAL_URL || row.bloggerCanonicalUrl || ''),
     mediaTrendPack: bible1SafeJson_(row.MEDIA_TREND_PACK_JSON || row.mediaTrendPack, {}),
     shortsPack: bible1SafeJson_(row.SHORTS_PACK_JSON || row.shortsPack, {}),
