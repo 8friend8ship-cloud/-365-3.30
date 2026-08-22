@@ -1,30 +1,21 @@
-import { GoogleGenAI } from '@google/genai';
 import { AIHistoryItem } from '../types';
 
-const APP_SALT = "BIBLE_ENGINE_2026_SECURE_SALT";
-const STORAGE_KEY = "EXTERNAL_API_KEYS_ENCRYPTED";
-const HISTORY_KEY = "AI_GENERATION_HISTORY";
+const HISTORY_KEY = 'AI_GENERATION_HISTORY';
+const LEGACY_KEY_STORAGE = 'EXTERNAL_API_KEYS_ENCRYPTED';
 
-const decrypt = (encoded: string, salt: string) => {
+/**
+ * Canonical Bible365 runtime is API-free in the browser.
+ * This compatibility function intentionally returns null so legacy callers
+ * cannot create a direct Gemini client.
+ */
+export const getAI = () => null;
+
+export const purgeLegacyBrowserApiKeys = () => {
   try {
-    const text = atob(encoded);
-    const textChars = text.split('');
-    const saltChars = salt.split('');
-    return textChars.map((c, i) => 
-      String.fromCharCode(c.charCodeAt(0) ^ saltChars[i % saltChars.length].charCodeAt(0))
-    ).join('');
-  } catch (e) {
-    return '';
+    localStorage.removeItem(LEGACY_KEY_STORAGE);
+  } catch (_) {
+    // localStorage can be unavailable in SSR/tests; no action required.
   }
-};
-
-export const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("GEMINI_API_KEY is missing");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
 };
 
 export const saveAIHistory = (item: Omit<AIHistoryItem, 'id' | 'timestamp' | 'date'>) => {
@@ -36,9 +27,8 @@ export const saveAIHistory = (item: Omit<AIHistoryItem, 'id' | 'timestamp' | 'da
     timestamp: now.getTime(),
     date: now.toISOString().split('T')[0]
   };
-  
+
   history.unshift(newItem);
-  // Limit to last 100 items to avoid localStorage bloat
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 100)));
   return newItem;
 };
@@ -49,7 +39,7 @@ export const getAIHistory = (): AIHistoryItem[] => {
   try {
     const parsed = JSON.parse(saved);
     return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
+  } catch (_) {
     return [];
   }
 };
@@ -60,38 +50,16 @@ export const clearAIHistory = () => {
 
 export const deleteAIHistoryItem = (id: string) => {
   const history = getAIHistory();
-  const newHistory = history.filter(item => item.id !== id);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.filter(item => item.id !== id)));
 };
 
-export const translateEngineFields = async (situation: string, bibleRef: string, bibleText: string, targetLang: string) => {
-  const ai = getAI();
-  if (!ai) return null;
-
-  const prompt = `Translate the following text into ${targetLang}. 
-Return ONLY a valid JSON object with three keys: "situation", "bibleRef", and "bibleText".
-Do not include any markdown formatting or extra text.
-
-Text to translate:
-Situation: ${situation}
-Bible Reference: ${bibleRef}
-Bible Text: ${bibleText}`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-    
-    const text = response.text;
-    if (!text) return null;
-    
-    return JSON.parse(text) as { situation: string, bibleRef: string, bibleText: string };
-  } catch (e) {
-    console.error("Translation failed:", e);
-    return null;
-  }
-};
+/**
+ * Translation is supplied by the prepared multilingual T2 pack. If a language
+ * is missing, return null instead of calling a browser API.
+ */
+export const translateEngineFields = async (
+  _situation: string,
+  _bibleRef: string,
+  _bibleText: string,
+  _targetLang: string
+) => null;
