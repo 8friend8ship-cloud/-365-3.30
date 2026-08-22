@@ -1,0 +1,7 @@
+{
+  "appId": "APP_BIBLE365",
+  "writerT1Template": "PTPL-BIBLE365-DRY-REFLECT-V1",
+  "t2Template": "BIBLE365_FRONT_PLATFORM_PACK_V2",
+  "requiredOutputs": ["verse_lineage","titleByLang","bodyByLang","questionByLang","actionByLang","audioByLang","bloggerCanonicalUrl","rightsStatus"],
+  "runtimeStatus": "BOUND_SYNC_X2_PENDING"
+}
