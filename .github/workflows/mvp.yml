@@ -1,0 +1,27 @@
+name: Bible365 MVP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  mvp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm install
+      - run: npm run lint
+      - run: npm run build
+      - name: Browser API policy check
+        shell: bash
+        run: |
+          if grep -RInE "generativelanguage\.googleapis\.com|VITE_GEMINI_API_KEY|GEMINI_API_KEY|new GoogleGenAI|from ['\"]@google/genai['\"]" src index.html vite.config.* 2>/dev/null; then
+            echo "Direct browser generative API path found"
+            exit 1
+          fi
+          echo "Bible365 browser API policy PASS"
