@@ -1,0 +1,15 @@
+{
+  "version": "FRONT_REQUIREMENT_REVERSE_FACTORY_V1_20260823",
+  "appIds": ["APP_BIBLE365"],
+  "controlTargetId": "FPC_BIBLE365_20260823",
+  "cycleMinutes": 10,
+  "dailyTargets": {"queens": 300, "seed": 80, "t1": 40, "t2": 20, "assets": 40, "scriptureBackfillUntilComplete": 1000},
+  "apiAbWindowsKst": [9, 13, 17, 21],
+  "reverseRequirement": ["date", "realLifeConcern", "verse", "rights", "locale", "audio", "platform", "secondaryProduct", "mediaTrend"],
+  "pipeline": ["FRONT_REQUIREMENT_REVERSE", "LIBRARIAN_RIGHTS_GATE", "QUEENS_REAL_LIFE_AND_MEDIA", "SEED_CONCERN_VERSE_LOCALE", "T1_DAILY_DEVOTIONAL", "T2_DELIVERY_DELTA", "FRONT_READBACK", "BLOGGER_MEDIA_POINTER", "CENTRAL_REINGEST"],
+  "qualityGate": {"scriptureSourceRights": 1.0, "meaningDistortion": 0, "requiredDeliveryFields": 1.0, "runtimeReadbackCount": 2},
+  "apiPromotionRule": {"trendAffectsFormatNotScriptureTruth": true, "approvedRightsSourceFirst": true, "qualityGainPoints": 8, "coverageGain": 0.15},
+  "storage": {"deliveryT2": "COMPACT_JSON", "scripture": "VERSE_VERSION_RIGHTS_POINTER", "fullText": "DRIVE_OR_BLOGGER_CANONICAL_URL"},
+  "physicalTriggerPolicy": "REUSE_CANONICAL_BIBLE1_BOUND_TRIGGER_ONLY_NO_PARALLEL_TRIGGER",
+  "approvalBoundary": ["NEW_OAUTH", "NEW_PAID_API_OR_SERVICE", "PUBLIC_PRODUCTION_OR_PUBLISH", "PAYMENT", "DESTRUCTIVE_DELETE"]
+}
