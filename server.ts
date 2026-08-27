@@ -38,13 +38,40 @@ function assertCanonicalRuntimeConfigured() {
 
 function copyAllowedQuery(source: express.Request['query'], target: URL) {
   const allow = new Set([
-    'type', 'ping', 'lang', 'id', 'text', 'content_type', 'dayKey', 'slot', 'locale', 'force',
+    'type', 'ping', 'lang', 'id', 'text', 'content_type', 'dayKey', 'slot', 'locale', 'force', 'callback',
   ]);
   for (const [key, raw] of Object.entries(source)) {
     if (!allow.has(key) || raw == null) continue;
     const value = Array.isArray(raw) ? raw[0] : raw;
     if (typeof value === 'string') target.searchParams.set(key, value);
   }
+}
+
+function safeCallbackName(raw: unknown) {
+  if (typeof raw !== 'string') return '';
+  return /^[A-Za-z_$][A-Za-z0-9_$\.]*$/.test(raw) ? raw : '';
+}
+
+function sameOriginPath(req: express.Request, pathValue: string) {
+  return `${req.protocol}://${req.get('host')}${pathValue}`;
+}
+
+function rewriteAudioPointers(payload: any, req: express.Request) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  for (const item of items) {
+    const ids = item?.audioFileIds;
+    if (!ids || typeof ids !== 'object') continue;
+    item.audioJson = item.audioJson && typeof item.audioJson === 'object' ? item.audioJson : {};
+    item.audioWebApp = item.audioWebApp && typeof item.audioWebApp === 'object' ? item.audioWebApp : {};
+    for (const [lang, fileId] of Object.entries(ids)) {
+      if (typeof fileId !== 'string' || !fileId) continue;
+      const encoded = encodeURIComponent(fileId);
+      item.audioJson[lang] = sameOriginPath(req, `/api/bible365/audio-json?id=${encoded}`);
+      item.audioWebApp[lang] = sameOriginPath(req, `/api/bible365/audio-datauri?id=${encoded}`);
+    }
+  }
+  return payload;
 }
 
 async function fetchCanonicalGas(req: express.Request) {
@@ -58,30 +85,112 @@ async function fetchCanonicalGas(req: express.Request) {
   return fetch(gasUrl, { redirect: 'follow' });
 }
 
+async function fetchAudioDataUri(fileId: string) {
+  assertCanonicalRuntimeConfigured();
+  if (!DELIVERY_WEBAPP_URL) throw new Error('BIBLE365_DELIVERY_WEBAPP_URL is not configured');
+
+  const gasUrl = new URL(DELIVERY_WEBAPP_URL);
+  gasUrl.searchParams.set('type', 'audio_json');
+  gasUrl.searchParams.set('id', fileId);
+  gasUrl.searchParams.set('token', ACCESS_TOKEN);
+  const response = await fetch(gasUrl, { redirect: 'follow' });
+  if (!response.ok) throw new Error(`GAS responded with ${response.status}`);
+
+  const data = await response.json() as { success?: boolean; dataUri?: string; message?: string };
+  if (!data.success || !data.dataUri) throw new Error(data.message || 'Invalid audio response');
+  return data.dataUri;
+}
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
   app.disable('x-powered-by');
 
-  // Canonical Bible365 content/voice gateway. Keeps all runtime ids and credentials server-side.
+  // Canonical Bible365 content/voice gateway. Supports the existing JSONP front contract,
+  // but all private ids/tokens are injected only on the server.
   app.get('/api/bible365/engine', async (req, res) => {
     try {
       const response = await fetchCanonicalGas(req);
       const body = await response.text();
-      const contentType = response.headers.get('content-type') || 'application/json; charset=utf-8';
+      const callback = safeCallbackName(req.query.callback);
+
+      // The existing Bible1 WebApp may return JSON or JSONP. Normalize, rewrite audio pointers
+      // to same-origin routes, then return in the form requested by the current front.
+      let payload: any = null;
+      try {
+        if (callback && body.trim().startsWith(`${callback}(`)) {
+          const trimmed = body.trim();
+          const inner = trimmed.slice(callback.length + 1).replace(/\);?\s*$/, '');
+          payload = JSON.parse(inner);
+        } else {
+          payload = JSON.parse(body);
+        }
+      } catch {
+        // If upstream already returns executable JSONP that cannot be normalized, preserve it.
+        // No private query values are reflected by this server.
+        res.status(response.status);
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/javascript; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        res.send(body);
+        return;
+      }
+
+      rewriteAudioPointers(payload, req);
       res.status(response.status);
-      res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'no-store');
-      res.send(body);
+      if (callback) {
+        res.type('application/javascript').send(`${callback}(${JSON.stringify(payload)});`);
+      } else {
+        res.json(payload);
+      }
     } catch (error: any) {
       const status = error?.statusCode || 502;
       console.error('[Bible365 engine gateway]', error?.message || error);
-      res.status(status).json({ success: false, error: 'BIBLE365_CANONICAL_GATEWAY_UNAVAILABLE' });
+      const callback = safeCallbackName(req.query.callback);
+      const payload = { success: false, error: 'BIBLE365_CANONICAL_GATEWAY_UNAVAILABLE' };
+      if (callback) {
+        res.status(status).type('application/javascript').send(`${callback}(${JSON.stringify(payload)});`);
+      } else {
+        res.status(status).json(payload);
+      }
     }
   });
 
-  // Audio proxy preserves the legacy audio-url advantage while hiding the delivery WebApp/token.
+  app.get('/api/bible365/audio-json', async (req, res) => {
+    const fileId = typeof req.query.id === 'string' ? req.query.id : '';
+    if (!fileId) {
+      res.status(400).json({ success: false, error: 'Missing fileId' });
+      return;
+    }
+    try {
+      const dataUri = await fetchAudioDataUri(fileId);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.json({ success: true, dataUri });
+    } catch (error: any) {
+      console.error('[Bible365 audio-json gateway]', error?.message || error);
+      res.status(502).json({ success: false, error: 'BIBLE365_AUDIO_GATEWAY_UNAVAILABLE' });
+    }
+  });
+
+  app.get('/api/bible365/audio-datauri', async (req, res) => {
+    const fileId = typeof req.query.id === 'string' ? req.query.id : '';
+    if (!fileId) {
+      res.status(400).send('');
+      return;
+    }
+    try {
+      const dataUri = await fetchAudioDataUri(fileId);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.send(dataUri);
+    } catch (error: any) {
+      console.error('[Bible365 audio-datauri gateway]', error?.message || error);
+      res.status(502).send('');
+    }
+  });
+
+  // Binary endpoint retained for download/playback adapters that prefer normal audio bytes.
   app.get('/api/bible365/audio', async (req, res) => {
     const fileId = typeof req.query.id === 'string' ? req.query.id : '';
     if (!fileId) {
@@ -90,21 +199,8 @@ async function startServer() {
     }
 
     try {
-      assertCanonicalRuntimeConfigured();
-      if (!DELIVERY_WEBAPP_URL) throw new Error('BIBLE365_DELIVERY_WEBAPP_URL is not configured');
-
-      const gasUrl = new URL(DELIVERY_WEBAPP_URL);
-      gasUrl.searchParams.set('type', 'audio_json');
-      gasUrl.searchParams.set('id', fileId);
-      gasUrl.searchParams.set('token', ACCESS_TOKEN);
-
-      const response = await fetch(gasUrl, { redirect: 'follow' });
-      if (!response.ok) throw new Error(`GAS responded with ${response.status}`);
-
-      const data = await response.json() as { success?: boolean; dataUri?: string; message?: string };
-      if (!data.success || !data.dataUri) throw new Error(data.message || 'Invalid audio response');
-
-      const matches = data.dataUri.match(/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/);
+      const dataUri = await fetchAudioDataUri(fileId);
+      const matches = dataUri.match(/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) throw new Error('Invalid data URI format');
 
       const mimeType = matches[1];
@@ -119,7 +215,7 @@ async function startServer() {
     }
   });
 
-  // Compatibility alias for older front code during migration. New code should use /api/bible365/audio.
+  // Compatibility alias for older front code during migration.
   app.get('/api/audio-proxy', (req, res) => {
     const query = new URLSearchParams();
     if (typeof req.query.id === 'string') query.set('id', req.query.id);
@@ -135,6 +231,8 @@ async function startServer() {
       mode: configured ? 'CANONICAL_SERVER_GATEWAY' : 'CONFIG_REQUIRED',
       configured,
       browserSecretExposure: false,
+      browserPrivateIdExposure: false,
+      backdataMode: 'BIBLE1_CANONICAL_CHAIN',
     });
   });
 
