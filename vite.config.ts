@@ -3,19 +3,23 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
-function resolvePublicOrigin(env: Record<string, string>) {
+function resolvePublicOrigin(env: Record<string, string | undefined>) {
   const explicit = (env.APP_URL || '').trim().replace(/\/$/, '');
   if (explicit) return explicit;
 
-  const vercelHost = (env.VERCEL_URL || env.VERCEL_PROJECT_PRODUCTION_URL || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const vercelHost = (env.VERCEL_URL || env.VERCEL_PROJECT_PRODUCTION_URL || '')
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
   if (vercelHost) return `https://${vercelHost}`;
 
   return 'http://localhost:3000';
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
-  const publicOrigin = resolvePublicOrigin(env);
+  const fileEnv = loadEnv(mode, '.', '');
+  const runtimeEnv: Record<string, string | undefined> = { ...process.env, ...fileEnv };
+  const publicOrigin = resolvePublicOrigin(runtimeEnv);
   const canonicalGateway = `${publicOrigin}/api/bible365/engine`;
 
   return {
