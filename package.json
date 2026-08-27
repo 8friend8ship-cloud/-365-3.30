@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "qa:canonical": "node scripts/verify-canonical-runtime.mjs",
+    "prebuild": "npm run qa:canonical",
     "build": "vite build",
     "start": "node server.ts",
     "preview": "vite preview",
