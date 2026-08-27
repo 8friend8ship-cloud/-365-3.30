@@ -12,6 +12,7 @@ const forbidden = [
   { pattern: /109430604282542310163/g, label: 'editor id in browser bundle' },
   { pattern: /process\.env\.GEMINI_API_KEY/g, label: 'Gemini key injected into browser build' },
   { pattern: /import\.meta\.env\.GEMINI_API_KEY/g, label: 'Gemini key consumed in browser source' },
+  { pattern: /bots-git-feat-persona-language-[^'"\s]+\.vercel\.app/g, label: 'hardcoded preview Bots front URL' },
 ];
 
 const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.html']);
@@ -59,6 +60,9 @@ requireText('server.ts', /app\.get\(['"]\/api\/bible365\/engine['"]/, 'canonical
 requireText('server.ts', /BIBLE365_ENGINE_WEBAPP_URL/, 'server-only Apps Script engine env');
 requireText('server.ts', /BIBLE365_ACCESS_TOKEN/, 'server-only access token env');
 requireText('server.ts', /safeCallbackName/, 'safe JSONP compatibility validation');
+requireText('src/main.tsx', /Bible365EntryShell/, 'Bible365 landing/bot entry shell mount');
+requireText('src/components/Bible365EntryShell.tsx', /VITE_BOTS_FRONT_URL/, 'configurable public Bots front URL');
+requireText('src/components/Bible365EntryShell.tsx', /Bible365 landing/, 'Bible365 landing entry');
 
 if (findings.length) {
   console.error('BIBLE365_CANONICAL_GATE_FAIL');
