@@ -34,16 +34,36 @@ function inspect(file) {
   }
 }
 
+function requireText(file, pattern, label) {
+  const full = path.join(root, file);
+  if (!fs.existsSync(full)) {
+    findings.push(`${file}: missing required canonical file`);
+    return;
+  }
+  const text = fs.readFileSync(full, 'utf8');
+  pattern.lastIndex = 0;
+  if (!pattern.test(text)) findings.push(`${file}: missing ${label}`);
+}
+
 for (const target of targets) walk(path.join(root, target));
 for (const file of explicitFiles) {
   const full = path.join(root, file);
   if (fs.existsSync(full)) inspect(full);
 }
 
+// Positive architecture assertions: compatibility env names are allowed only when
+// Vite pins them to our same-origin gateway and server-managed placeholders.
+requireText('vite.config.ts', /\/api\/bible365\/engine/, 'same-origin Bible365 engine gateway');
+requireText('vite.config.ts', /server-managed/, 'server-managed browser placeholder');
+requireText('server.ts', /app\.get\(['"]\/api\/bible365\/engine['"]/, 'canonical engine server route');
+requireText('server.ts', /BIBLE365_ENGINE_WEBAPP_URL/, 'server-only Apps Script engine env');
+requireText('server.ts', /BIBLE365_ACCESS_TOKEN/, 'server-only access token env');
+requireText('server.ts', /safeCallbackName/, 'safe JSONP compatibility validation');
+
 if (findings.length) {
   console.error('BIBLE365_CANONICAL_GATE_FAIL');
   for (const finding of findings) console.error(`- ${finding}`);
-  console.error('Front must use same-origin /api/bible365/* only. Secrets/private ids/generative API keys remain server-side.');
+  console.error('Front must terminate at same-origin /api/bible365/* only; private ids/secrets remain server-side.');
   process.exit(1);
 }
 
