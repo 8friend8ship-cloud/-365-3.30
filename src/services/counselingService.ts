@@ -1,3 +1,6 @@
+import { findFrequentCounselSeed } from '../data/counselSeedCatalog';
+import { findT1Seed } from '../data/counselT1Matrix';
+
 export type CounselPersona = {
   id: string;
   name: string;
@@ -18,6 +21,7 @@ export type CounselPackage = {
     personaId?: string;
     personaName?: string;
     tone?: string;
+    bridgeSeedId?: string;
   };
   scripture?: {
     ref?: string;
@@ -79,8 +83,8 @@ const hashIndex = (value: string, length: number) => {
 
 const classifySituation = (text: string) => {
   const normalized = text.toLowerCase();
-  let best = SITUATIONS[0];
-  let bestScore = -1;
+  let best: (typeof SITUATIONS)[number] | null = null;
+  let bestScore = 0;
   SITUATIONS.forEach((s) => {
     const score = s.words.reduce((n, word) => n + (normalized.includes(word) ? 1 : 0), 0);
     if (score > bestScore) {
@@ -92,23 +96,36 @@ const classifySituation = (text: string) => {
 };
 
 export function buildLocalCounselFallback(input: CounselRequest): CounselPackage {
-  const situation = classifySituation(`${input.question} ${input.theme || ''}`);
+  const sourceText = `${input.question} ${input.theme || ''}`;
+  const hotSeed = findFrequentCounselSeed(sourceText, input.verseRef || '');
+  const classified = classifySituation(sourceText);
+  const situation = classified || (hotSeed ? {
+    id: hotSeed.situationId,
+    name: SITUATIONS.find((s) => s.id === hotSeed.situationId)?.name || '저장_Seed_매칭',
+  } : {
+    id: 'SIT_GENERAL',
+    name: '일반_상황_추가분류필요',
+  });
+
   const persona = FALLBACK_PERSONAS[hashIndex(`${input.sessionKey || ''}|${input.question}`, FALLBACK_PERSONAS.length)];
+  const t1 = findT1Seed(situation.id, persona.id);
   const requestId = `LOCAL_${Date.now()}`;
+
   return {
-    version: 'B365_COUNSEL_FRONT_FALLBACK_V1',
+    version: 'B365_COUNSEL_FRONT_FALLBACK_V2',
     templateId: 'DRYWRITER_BIBLE_COUNSEL_V1_20260830',
     requestId,
     uiTitle: '글·상담',
     counselorLabel: '',
     namedPastorCounselor: false,
     personalization: {
-      mode: 'LOCAL_DETERMINISTIC_FALLBACK',
+      mode: t1 ? 'LOCAL_EMBEDDED_T1_RANDOM_PERSONA' : 'LOCAL_GENERAL_UNCERTAIN',
       situationId: situation.id,
       situationName: situation.name,
       personaId: persona.id,
       personaName: persona.name,
       tone: persona.tone,
+      bridgeSeedId: hotSeed?.id,
     },
     scripture: {
       ref: input.verseRef,
@@ -117,25 +134,31 @@ export function buildLocalCounselFallback(input: CounselRequest): CounselPackage
       application: input.application,
     },
     userQuestion: input.question,
+    t1Id: t1?.t1Id,
+    storyboard: t1?.storyboard || '상황→본문문맥→필요 렌즈→관계→24시간 행동→질문',
     draftSeed: [
       `현재 상황: ${input.question}`,
       `상황 분류: ${situation.name}`,
       `상담 페르소나: ${persona.name}`,
+      hotSeed ? `자주사용 기준 Seed(${hotSeed.id}): ${hotSeed.seedBody}` : '',
+      t1 ? `T1 스타일 Seed(${t1.t1Id}): ${t1.seedBody}` : '미분류 상황: 임의로 불안 등 기존 카테고리에 넣지 않고 GENERAL로 남겨 다음 Queens/Seed 확장 후보로 처리합니다.',
       '본문 확인: 한 구절만 떼어 단정하지 않고 앞뒤 문맥을 확인합니다.',
       '점검: 본·권위·은사·진보·일관성·인간관계·지정의·건강한 섬김 중 필요한 렌즈를 적용합니다.',
       '행동: 오늘 멈출 것·시작할 것·유지할 것을 나누고 24시간 안의 한 가지 행동을 정합니다.',
-    ].join('\n'),
+    ].filter(Boolean).join('\n'),
     qa: [
       'SCRIPTURE_CONTEXT_REQUIRED',
       'NO_CONDEMNATION_OR_SPIRITUAL_OVERCLAIM',
       'NO_NAMED_PASTOR_COUNSELOR_LABEL',
       'PRACTICAL_ACTION_PRESENT',
+      t1 ? 'EMBEDDED_T1_SEED_FOUND' : 'GENERAL_SITUATION_NEEDS_QUEENS_EXPANSION',
     ],
-    status: 'LOCAL_FALLBACK',
+    status: t1 ? 'LOCAL_T1_SEED_READY' : 'LOCAL_GENERAL_UNCERTAIN',
   };
 }
 
 export async function requestBible365Counsel(input: CounselRequest): Promise<CounselPackage> {
+  const hotSeed = findFrequentCounselSeed(`${input.question} ${input.theme || ''}`, input.verseRef || '');
   if (!COUNSEL_WEBAPP_URL) return buildLocalCounselFallback(input);
 
   try {
@@ -143,6 +166,7 @@ export async function requestBible365Counsel(input: CounselRequest): Promise<Cou
       action: 'counsel_enqueue',
       templateId: 'DRYWRITER_BIBLE_COUNSEL_V1_20260830',
       personalizationMode: 'RANDOM_FROM_QUALIFIED_T1_SEEDS',
+      bridgeSeedHint: hotSeed?.id || '',
       ...input,
     };
     const response = await fetch(COUNSEL_WEBAPP_URL, {
@@ -155,7 +179,7 @@ export async function requestBible365Counsel(input: CounselRequest): Promise<Cou
     if (!data?.success || !data?.package) throw new Error(data?.error || 'COUNSEL_INVALID_RESPONSE');
     return data.package as CounselPackage;
   } catch (error) {
-    console.warn('Bible365 counseling backend unavailable; using stored-template fallback.', error);
+    console.warn('Bible365 counseling backend unavailable; using embedded T1/stored-template fallback.', error);
     return buildLocalCounselFallback(input);
   }
 }
