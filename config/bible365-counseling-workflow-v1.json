@@ -1,0 +1,65 @@
+{
+  "version": "B365_COUNSEL_V1_20260830",
+  "templateId": "DRYWRITER_BIBLE_COUNSEL_V1_20260830",
+  "ui": {
+    "titleKo": "글·상담",
+    "namedPastorLabelAllowed": false,
+    "namedPastorAttributionInCounseling": false,
+    "personalizationMode": "RANDOM_FROM_QUALIFIED_T1_SEEDS"
+  },
+  "route": [
+    "COUNSEL_REQUEST",
+    "QUEENS_INTAKE",
+    "SEED_QUALIFY",
+    "T1_STORYBOARD",
+    "T2_FRONT_PACKAGE",
+    "FRONT_PERSONALIZED_RANDOM",
+    "FEEDBACK_WRITEBACK"
+  ],
+  "sheets": {
+    "queens": "성경365_상담_Queens",
+    "seed": "성경365_상담_Seed",
+    "persona": "성경365_상담_Persona",
+    "t1": "성경365_상담_T1_Template",
+    "t2": "성경365_상담_T2_Delivery",
+    "log": "성경365_상담_Run_Log"
+  },
+  "situationCategories": [
+    "불안_걱정",
+    "가족_관계갈등",
+    "직장_진로_결정",
+    "경제_재정압박",
+    "실패_죄책감",
+    "상실_슬픔",
+    "외로움_소외",
+    "봉사_소진"
+  ],
+  "personaSeeds": [
+    {"id":"PERSONA_LISTEN","name":"경청형","tone":"담담하고 공감하되 과장하지 않음"},
+    {"id":"PERSONA_REALITY","name":"현실점검형","tone":"사실·감정·선택을 분리해 명료하게 점검"},
+    {"id":"PERSONA_RELATION","name":"관계회복형","tone":"도움·공경·화해·경계의 균형을 점검"},
+    {"id":"PERSONA_ACTION","name":"실천동행형","tone":"24시간 안에 할 수 있는 한 가지 행동을 제안"},
+    {"id":"PERSONA_GROWTH","name":"배움성장형","tone":"인내·일관성·지정의를 성장의 증거로 연결"}
+  ],
+  "lens8": [
+    "본이 된다: 행실·사랑·믿음",
+    "권위의 근거: 말씀에 대한 행동",
+    "은사 사용: 사적 욕심 X / 말씀·가르침·권면",
+    "진보의 증거: 인내·승리",
+    "일관성 유지: 전도·선교",
+    "인간관계 유지: 도움이 필요한 자·공경",
+    "경건한 삶: 신앙 안에서 지·정·의",
+    "주님의 뜻: 건강한 섬김 / 가르치고 배우라"
+  ],
+  "qa": [
+    "SCRIPTURE_CONTEXT_PASS",
+    "USER_CORRECTION_PRIORITY",
+    "NO_PRIVATE_DESIRE_OVERRIDE",
+    "NO_CONDEMNATION_OR_SPIRITUAL_OVERCLAIM",
+    "PRACTICAL_ACTION_PRESENT",
+    "NO_NAMED_PASTOR_COUNSELOR_LABEL",
+    "T1_LINEAGE_PRESENT",
+    "T2_SOURCE_SEED_PRESENT"
+  ],
+  "publishBoundary": "INTERNAL_DRAFT_AUTO; EXTERNAL_PUBLICATION_REQUIRES_EXISTING_APPROVAL_GATE"
+}

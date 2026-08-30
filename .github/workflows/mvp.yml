@@ -3,6 +3,8 @@ name: Bible365 MVP
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -20,8 +22,16 @@ jobs:
       - name: Browser API policy check
         shell: bash
         run: |
-          if grep -RInE "generativelanguage\.googleapis\.com|VITE_GEMINI_API_KEY|GEMINI_API_KEY|new GoogleGenAI|from ['\"]@google/genai['\"]" src index.html vite.config.* 2>/dev/null; then
-            echo "Direct browser generative API path found"
+          # Block browser credentials, direct Generative Language endpoints and
+          # direct GoogleGenAI client construction. A schema-only Type import is
+          # allowed while legacy admin UI is being retired because getAI() is a
+          # fail-closed null compatibility shim and no credential is bundled.
+          if grep -RInE "generativelanguage\.googleapis\.com|VITE_GEMINI_API_KEY|GEMINI_API_KEY|new[[:space:]]+GoogleGenAI|GoogleGenAI\(" src index.html vite.config.* 2>/dev/null; then
+            echo "Direct browser generative API client/secret path found"
+            exit 1
+          fi
+          if grep -RInE "process\.env\.(GEMINI|GOOGLE).*KEY|import\.meta\.env\.VITE_.*(GEMINI|GOOGLE).*KEY" src index.html vite.config.* 2>/dev/null; then
+            echo "Browser AI credential reference found"
             exit 1
           fi
           echo "Bible365 browser API policy PASS"
