@@ -3,6 +3,8 @@ name: Bible365 MVP
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
