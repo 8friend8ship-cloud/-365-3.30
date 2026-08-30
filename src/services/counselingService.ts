@@ -45,12 +45,12 @@ export type CounselRequest = {
   sessionKey?: string;
 };
 
+// URL은 공개 endpoint 포인터일 뿐 credential이 아니다.
+// 실제 credential/token은 VITE_*에 두지 않고 server-side router 또는 Apps Script 권한 경계에서 처리한다.
 const COUNSEL_WEBAPP_URL =
   (import.meta.env.VITE_COUNSEL_WEBAPP_URL as string | undefined) ||
   (import.meta.env.VITE_BIBLE_WEBAPP_URL as string | undefined) ||
   '';
-
-const COUNSEL_TOKEN = (import.meta.env.VITE_COUNSEL_ACCESS_TOKEN as string | undefined) || '';
 
 const FALLBACK_PERSONAS: CounselPersona[] = [
   { id: 'PERSONA_LISTEN', name: '경청형', tone: '담담하게 듣고 감정을 과장하지 않음' },
@@ -144,7 +144,6 @@ export async function requestBible365Counsel(input: CounselRequest): Promise<Cou
       templateId: 'DRYWRITER_BIBLE_COUNSEL_V1_20260830',
       personalizationMode: 'RANDOM_FROM_QUALIFIED_T1_SEEDS',
       ...input,
-      ...(COUNSEL_TOKEN ? { token: COUNSEL_TOKEN } : {}),
     };
     const response = await fetch(COUNSEL_WEBAPP_URL, {
       method: 'POST',
