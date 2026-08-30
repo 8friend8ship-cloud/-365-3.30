@@ -1,0 +1,83 @@
+{
+  "version": "B365_DAILY5_V1_20260830",
+  "appId": "APP_BIBLE365",
+  "templateId": "DRYWRITER_BIBLE_DAILY5_STORYBOARD_V1_20260830",
+  "dailyTarget": 5,
+  "sourcePriority": [
+    "Daily_Publish_Queue + DB_Map_New",
+    "Bible_Passage_Library active Proverbs fallback"
+  ],
+  "pipeline": [
+    "DAILY_SOURCE",
+    "QUEENS",
+    "SEED",
+    "T1_DRYWRITER_STORYBOARD",
+    "T2_PLATFORM_PACK",
+    "FRONT_BRIDGE",
+    "FEEDBACK_WRITEBACK"
+  ],
+  "personas": [
+    "PERSONA_LISTEN",
+    "PERSONA_REALITY",
+    "PERSONA_RELATION",
+    "PERSONA_ACTION",
+    "PERSONA_GROWTH"
+  ],
+  "storyboard": [
+    "상황/장면",
+    "본문 문맥",
+    "8개 렌즈 중 필요한 2~3개",
+    "핵심 원리",
+    "관계/섬김 연결",
+    "24시간 행동",
+    "묵상 질문"
+  ],
+  "eightLenses": [
+    "본이 된다: 행실·사랑·믿음",
+    "권위의 근거: 말씀에 대한 행동",
+    "은사 사용: 사적 욕심 금지·가르침·권면",
+    "진보의 증거: 인내·승리",
+    "일관성 유지: 전도·선교로 이어지는 지속성",
+    "인간관계 유지: 도움 필요자·공경·건강한 경계",
+    "경건한 삶: 신앙 안에서 지·정·의",
+    "주님의 뜻: 건강한 섬김·가르치고 배우기"
+  ],
+  "t2Outputs": [
+    "FRONT_LONG",
+    "YOUTUBE_SCRIPT",
+    "BLOG_NEWSLETTER",
+    "SHORT_SOCIAL",
+    "AUDIO_TEXT"
+  ],
+  "publishPolicy": {
+    "internalDraftAuto": true,
+    "externalPublicAuto": false,
+    "approvalRequiredForPublicPublish": true
+  },
+  "runtime": {
+    "handler": "runBible365Daily5PipelineTick",
+    "schedule": "EVERY_2_HOURS_IDEMPOTENT",
+    "installer": "installOrReuseBible365Daily5Trigger",
+    "health": "b365Daily5Health",
+    "frontReadActions": ["daily5_health", "daily5_today", "daily5_latest", "daily5_day"],
+    "doGetIntegration": "Call handleBible365Daily5DoGet(e) from the existing canonical dispatcher; do not replace the existing doGet."
+  },
+  "sheets": [
+    "성경365_일일5_Queens",
+    "성경365_일일5_Seed",
+    "성경365_일일5_T1_Template",
+    "성경365_일일5_T2_Delivery",
+    "성경365_일일5_Front_Bridge",
+    "성경365_일일5_Run_Log"
+  ],
+  "qa": [
+    "SCRIPTURE_CONTEXT_REQUIRED",
+    "USER_CORRECTION_PRIORITY",
+    "NO_CONDEMNATION_OR_OVERCLAIM",
+    "PRACTICAL_ACTION_PRESENT",
+    "NO_NAMED_PASTOR_COUNSELOR_LABEL",
+    "TODAY_COUNT_EQUALS_5",
+    "QUEENS_SEED_T1_T2_FRONT_LINEAGE_COMPLETE",
+    "TRIGGER_COUNT_EQUALS_1_BEFORE_RUNTIME_VERIFIED"
+  ]
+}
