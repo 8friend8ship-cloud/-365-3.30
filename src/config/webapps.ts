@@ -1,56 +1,53 @@
+export type WebAppRuntimeConfig = {
+  name: string;
+  id: string;
+  deploymentId: string;
+  url: string;
+  purpose: string;
+  token: string;
+};
+
+const SAFE_DEFAULTS = {
+  PRIMARY_CONTENT: {
+    name: 'Bible365 Canonical Content Gateway',
+    id: 'PRIMARY_CONTENT_GATEWAY',
+    deploymentId: 'SERVER_SIDE',
+    url: '/api/bible365/engine',
+    purpose: '본문/콘텐츠 same-origin gateway',
+    token: '',
+  },
+  AUDIO_DELIVERY: {
+    name: 'Bible365 Canonical Audio Gateway',
+    id: 'AUDIO_DELIVERY_GATEWAY',
+    deploymentId: 'SERVER_SIDE',
+    url: '/api/bible365/engine',
+    purpose: '오디오 포인터 포함 same-origin gateway',
+    token: '',
+  },
+  AUDIO_PROXY: {
+    name: 'Bible365 Audio Proxy',
+    id: 'AUDIO_PROXY_API',
+    deploymentId: 'SERVER_SIDE',
+    url: '/api/bible365/audio',
+    purpose: '오디오 재생 프록시',
+    token: '',
+  },
+} as const;
+
 export const getWebAppConfig = () => {
-  const savedConfig = localStorage.getItem('webapp_config');
-  if (savedConfig) {
-    try {
-      const parsed = JSON.parse(savedConfig);
-      // Ensure AUDIO_PROXY is always present even if old config was saved
-      if (!parsed.AUDIO_PROXY) {
-        parsed.AUDIO_PROXY = {
-          name: 'Audio Proxy API',
-          id: 'AUDIO_PROXY_API',
-          deploymentId: 'N/A (Node.js Proxy)',
-          url: '/api/audio-proxy',
-          purpose: '프록시 전용',
-          token: 'N/A'
-        };
-      }
-      return parsed;
-    } catch (e) {
-      console.error('Failed to parse webapp_config', e);
-    }
-  }
-  
+  // Never restore legacy browser-stored Apps Script URLs, deployment ids, or tokens.
+  // Private runtime configuration is server-side only.
   return {
-    PRIMARY_CONTENT: {
-      name: 'Primary Content WebApp',
-      id: 'PRIMARY_CONTENT_WEBAPP',
-      deploymentId: import.meta.env.VITE_PRIMARY_DEPLOYMENT_ID || 'AKfycbwx7sU5mEpCcEbGqx6122eclRauaOwZS28ig5LyjUcEZnfjD-I',
-      url: import.meta.env.VITE_PRIMARY_WEBAPP_URL || 'https://script.google.com/macros/s/AKfycbwx7sU5mEpCcEbGqx6122eclRauaOwZS28ig5LyjUcEZnfjD-I/exec',
-      purpose: '본문/콘텐츠 전용',
-      token: import.meta.env.VITE_ACCESS_TOKEN || 'bible2026secret'
-    },
-    AUDIO_DELIVERY: {
-      name: 'Audio Delivery WebApp',
-      id: 'AUDIO_DELIVERY_WEBAPP',
-      deploymentId: import.meta.env.VITE_AUDIO_DEPLOYMENT_ID || 'AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z',
-      url: import.meta.env.VITE_AUDIO_WEBAPP_URL || import.meta.env.VITE_AUDIO_WEBAPP_BASE_URL || 'https://script.google.com/macros/s/AKfycbwlsqwtVAm4DEU5ugDgleVKxOs2_HECqiOnbLTiLR74Pd25QzNITPjCaHr-llSrG-1Z/exec',
-      purpose: '오디오 송출 전용',
-      token: import.meta.env.VITE_ACCESS_TOKEN || 'bible2026secret'
-    },
-    AUDIO_PROXY: {
-      name: 'Audio Proxy API',
-      id: 'AUDIO_PROXY_API',
-      deploymentId: 'N/A (Node.js Proxy)',
-      url: '/api/audio-proxy',
-      purpose: '프록시 전용',
-      token: 'N/A'
-    }
+    PRIMARY_CONTENT: { ...SAFE_DEFAULTS.PRIMARY_CONTENT },
+    AUDIO_DELIVERY: { ...SAFE_DEFAULTS.AUDIO_DELIVERY },
+    AUDIO_PROXY: { ...SAFE_DEFAULTS.AUDIO_PROXY },
   };
 };
 
 export const WEBAPP_REGISTRY = getWebAppConfig();
 
-export const saveWebAppConfig = (newConfig: typeof WEBAPP_REGISTRY) => {
-  localStorage.setItem('webapp_config', JSON.stringify(newConfig));
-  Object.assign(WEBAPP_REGISTRY, newConfig);
+export const saveWebAppConfig = (_newConfig: typeof WEBAPP_REGISTRY) => {
+  // Compatibility no-op. Browser-side runtime credentials are intentionally disabled.
+  localStorage.removeItem('webapp_config');
+  localStorage.removeItem('webapp_config_time');
 };

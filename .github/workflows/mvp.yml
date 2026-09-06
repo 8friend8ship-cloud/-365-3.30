@@ -3,6 +3,8 @@ name: Bible365 MVP
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -20,8 +22,8 @@ jobs:
       - name: Browser API policy check
         shell: bash
         run: |
-          if grep -RInE "generativelanguage\.googleapis\.com|VITE_GEMINI_API_KEY|GEMINI_API_KEY|new GoogleGenAI|from ['\"]@google/genai['\"]" src index.html vite.config.* 2>/dev/null; then
-            echo "Direct browser generative API path found"
+          if grep -RInE "generativelanguage\.googleapis\.com|VITE_GEMINI_API_KEY|GEMINI_API_KEY|new GoogleGenAI|from ['\"]@google/genai['\"]|bible2026secret|script\.google\.com/macros/s/|1HK4ATRZ-lSZ4fyuZi4ypHodgGZK1kBMsEFkAxOm9904|109430604282542310163" src index.html vite.config.* 2>/dev/null; then
+            echo "Direct browser secret/API/private-id path found"
             exit 1
           fi
-          echo "Bible365 browser API policy PASS"
+          echo "Bible365 canonical browser policy PASS"
