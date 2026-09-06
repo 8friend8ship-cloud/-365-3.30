@@ -49,12 +49,8 @@ export type CounselRequest = {
   sessionKey?: string;
 };
 
-// URL은 공개 endpoint 포인터일 뿐 credential이 아니다.
-// 실제 credential/token은 VITE_*에 두지 않고 server-side router 또는 Apps Script 권한 경계에서 처리한다.
-const COUNSEL_WEBAPP_URL =
-  (import.meta.env.VITE_COUNSEL_WEBAPP_URL as string | undefined) ||
-  (import.meta.env.VITE_BIBLE_WEBAPP_URL as string | undefined) ||
-  '';
+// Counseling uses only the same-origin server gateway; credentials stay server-side.
+const COUNSEL_ROUTE = '/api/bible365/counsel';
 
 const FALLBACK_PERSONAS: CounselPersona[] = [
   { id: 'PERSONA_LISTEN', name: '경청형', tone: '담담하게 듣고 감정을 과장하지 않음' },
@@ -159,7 +155,6 @@ export function buildLocalCounselFallback(input: CounselRequest): CounselPackage
 
 export async function requestBible365Counsel(input: CounselRequest): Promise<CounselPackage> {
   const hotSeed = findFrequentCounselSeed(`${input.question} ${input.theme || ''}`, input.verseRef || '');
-  if (!COUNSEL_WEBAPP_URL) return buildLocalCounselFallback(input);
 
   try {
     const payload = {
@@ -169,7 +164,7 @@ export async function requestBible365Counsel(input: CounselRequest): Promise<Cou
       bridgeSeedHint: hotSeed?.id || '',
       ...input,
     };
-    const response = await fetch(COUNSEL_WEBAPP_URL, {
+    const response = await fetch(COUNSEL_ROUTE, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),

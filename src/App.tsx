@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import DayContent from './components/DayContent';
 import DialogModal from './components/DialogModal';
+import DailyHabitPanel from './components/DailyHabitPanel';
 import { proverbs as initialProverbs, defaultVerse, ProverbData } from './data/proverbs';
 import { getUIText } from './i18n/uiTexts';
 
@@ -28,16 +29,11 @@ const ProverbList = lazy(() => import('./components/ProverbList'));
 const StrategyDashboard = lazy(() => import('./components/StrategyDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
-// Public routing identifiers come from deployment configuration.
-// Secrets and long-lived access tokens must never be bundled into this browser app.
-const WEBAPP_URL = (import.meta.env.VITE_BIBLE_ENGINE_URL || '').trim();
-const DELIVERY_ENGINE_URL = (import.meta.env.VITE_DELIVERY_ENGINE_URL || '').trim();
-const SPREADSHEET_ID = (import.meta.env.VITE_BIBLE_SPREADSHEET_ID || '').trim();
-const EDITOR_ID = (import.meta.env.VITE_BIBLE_EDITOR_ID || '').trim();
-const ENGINE_CONFIG_ERROR =
-  !WEBAPP_URL || !SPREADSHEET_ID
-    ? '성경 엔진 연결 설정이 완료되지 않아 저장된 콘텐츠만 표시합니다.'
-    : null;
+// Customer traffic uses only the same-origin server gateway.
+const WEBAPP_URL = '/api/bible365/engine';
+const DELIVERY_ENGINE_URL = '/api/bible365/engine';
+const ENGINE_CONFIG_ERROR: string | null = null;
+const DEV_TOOLS_ENABLED = import.meta.env.DEV && new URLSearchParams(window.location.search).get('devtools') === '1';
 
 export default function App() {
   const [proverbsData, setProverbsData] = useState<Record<string, ProverbData>>(() => {
@@ -144,10 +140,8 @@ export default function App() {
   // Authentication is enforced server-side; no browser token is appended.
   const buildEngineUrl = (params: Record<string, string>) => {
     if (ENGINE_CONFIG_ERROR) throw new Error(ENGINE_CONFIG_ERROR);
-    const url = new URL(WEBAPP_URL);
+    const url = new URL(WEBAPP_URL, window.location.origin);
     Object.entries(params).forEach(([key, val]) => url.searchParams.set(key, val));
-    url.searchParams.set('spreadsheetId', SPREADSHEET_ID);
-    if (EDITOR_ID) url.searchParams.set('editorId', EDITOR_ID);
     url.searchParams.set('t', Date.now().toString());
     return url.toString();
   };
@@ -286,7 +280,8 @@ export default function App() {
           cleanup();
           resolve(res);
         };
-        script.src = buildEngineUrl({ type: requestType, callback: callbackName });
+        const daily5Type = requestType === 'random' ? 'daily5_latest' : `daily5_${requestType}`;
+        script.src = buildEngineUrl({ type: daily5Type, callback: callbackName });
         script.onerror = () => {
           cleanup();
           reject(new Error('네트워크 오류 또는 CORS 문제로 엔진에 연결할 수 없습니다.'));
@@ -660,6 +655,16 @@ export default function App() {
     }
   }, [engineAudio, engineData, appLang]);
 
+  const speakLocally = () => {
+    if (!engineBody || !('speechSynthesis' in window)) { showAlert('이 기기에서는 로컬 음성 읽기를 사용할 수 없습니다.'); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance([engineTitle, engineBible?.ref, engineBible?.text, engineBody].filter(Boolean).join('. '));
+    const langMap: Record<string,string> = {KO:'ko-KR',EN:'en-US',JP:'ja-JP',CN:'zh-CN',ES:'es-ES',DE:'de-DE',HI:'hi-IN'};
+    u.lang = langMap[appLang] || 'ko-KR';
+    u.rate = playbackRate;
+    window.speechSynthesis.speak(u);
+  };
+
   // ✅ 음성 생성 호출 (통합된 'merged' 타입 사용)
   const generateVoice = async (text: string) => {
     if (!text) return;
@@ -773,6 +778,7 @@ export default function App() {
                 <option value="HI">HI</option>
               </select>
 
+              {DEV_TOOLS_ENABLED && <>
               {/* ✅ 헬스체크 버튼 */}
               <button
                 onClick={checkEngineHealth}
@@ -824,6 +830,7 @@ export default function App() {
               >
                 <Settings className="w-4 h-4" />
               </button>
+              </>}
             </div>
           </div>
         </div>
@@ -847,6 +854,8 @@ export default function App() {
           {engineError && <p className="text-red-500 text-center font-bold">{engineError}</p>}
 
           <DayContent data={currentVerseData} lang={appLang} />
+
+          <DailyHabitPanel data={currentVerseData} onOpenArchive={() => setIsListOpen(true)} />
 
           {/* ✅ 엔진 결과 섹션 */}
           {enginePack && enginePack.items && (
@@ -958,6 +967,9 @@ export default function App() {
                     )}
                     <h2 className="text-xl font-bold serif text-[#2b3a2f]">{engineTitle || '제목 없음'}</h2>
                     <p className="text-sm leading-7 text-gray-800 whitespace-pre-wrap">{engineBody || '본문 없음'}</p>
+                    <div className="pt-2">
+                      <button onClick={speakLocally} className="text-xs bg-gray-100 px-3 py-2 rounded-lg hover:bg-gray-200">기기 음성으로 듣기</button>
+                    </div>
                   </div>
 
                   {engineAudio && (
