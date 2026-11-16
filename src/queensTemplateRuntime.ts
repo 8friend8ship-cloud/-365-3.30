@@ -7,8 +7,12 @@ export function runBible365QueensTemplateReadback() {
   };
   const actual: Record<string, string> = { QUEENS: 'READY', SEED_QA: 'READY' };
   const missing = Object.keys(required).filter((key) => actual[key] == null || actual[key] === '');
+  // Source declarations never prove the bound Apps Script/front runtime executed twice.
+  const runtimeX2Verified = false;
   return {
-    ok: true,
+    ok: missing.length === 0 && runtimeX2Verified,
+    status: 'HOLD_RUNTIME_X2_AND_REQUIRED_STAGE_READBACK',
+    runtimeX2Verified,
     version: 'QTA_PACK_RUNTIME_V1_20260915',
     app: 'BIBLE365',
     route: 'QUEENS→TEMPLATE→FUNCTION_DIFF→SAFE_APPLY→RUNTIME_X2→READBACK',
